@@ -1,0 +1,273 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 232 70% 4%;
+    --foreground: 210 18% 96%;
+
+    --card: 223 24% 10%;
+    --card-foreground: 210 18% 96%;
+
+    --popover: 223 24% 10%;
+    --popover-foreground: 210 18% 96%;
+
+    --primary: 167 100% 48%;
+    --primary-foreground: 230 65% 7%;
+
+    --secondary: 222 30% 12%;
+    --secondary-foreground: 210 18% 96%;
+
+    --muted: 228 25% 14%;
+    --muted-foreground: 214 15% 68%;
+
+    --accent: 223 36% 14%;
+    --accent-foreground: 210 18% 96%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 28% 18%;
+    --input: 220 28% 18%;
+    --ring: 167 100% 48%;
+
+    --radius: 0.85rem;
+
+    --glow: 167 100% 44%;
+    --surface: 223 26% 9%;
+    --surface-soft: 223 20% 13%;
+    --hero-gradient: radial-gradient(circle at 50% 42%, hsl(var(--glow) / 0.45), transparent 40%);
+    --hero-line: linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.85) 50%, transparent 100%);
+    --shadow-premium: 0 0 0 1px hsl(var(--border)), 0 24px 60px -32px hsl(167 100% 35% / 0.45);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Manrope", sans-serif;
+    background-image: radial-gradient(circle at 50% -10%, hsl(var(--primary) / 0.13), transparent 35%);
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply border border-border/80 bg-card/70 backdrop-blur-md;
+    box-shadow: var(--shadow-premium);
+  }
+
+  .story-link {
+    @apply relative inline-flex items-center gap-2 after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-bottom-right after:scale-x-0 after:bg-primary after:transition-transform after:duration-300 hover:after:origin-bottom-left hover:after:scale-x-100;
+  }
+
+  .hero-glow {
+    background-image: var(--hero-gradient);
+  }
+
+  .hero-line {
+    background-image: var(--hero-line);
+  }
+
+  /* ── Auth pages ── */
+  .auth-page-bg {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at 20% 20%, hsl(var(--primary) / 0.12), transparent 45%),
+      radial-gradient(circle at 80% 80%, hsl(260 80% 60% / 0.08), transparent 45%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .auth-glow-1 {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 10% 10%, hsl(var(--primary) / 0.18), transparent 55%);
+    z-index: 0;
+  }
+
+  .auth-glow-2 {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 50% at 90% 90%, hsl(260 80% 60% / 0.12), transparent 55%);
+    z-index: 0;
+  }
+
+  .auth-card {
+    @apply border border-border/60;
+    box-shadow:
+      0 0 0 1px hsl(var(--border) / 0.5),
+      0 32px 80px -16px hsl(var(--primary) / 0.2),
+      0 8px 32px -8px hsl(0 0% 0% / 0.5);
+    animation: auth-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes dash-progress {
+    0%   { width: 0%; }
+    40%  { width: 55%; }
+    80%  { width: 85%; }
+    100% { width: 100%; }
+  }
+
+  /* ── Trading page — phóng to 150% để chữ và control dễ đọc (demo / khách xem màn nhỏ) ── */
+  .trading-root {
+    zoom: 1.5;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(ellipse 60% 30% at 0% 0%, hsl(var(--primary) / 0.07), transparent 50%),
+      radial-gradient(ellipse 40% 40% at 100% 100%, hsl(260 80% 60% / 0.05), transparent 50%);
+  }
+
+  /* Firefox: hỗ trợ zoom từ vài phiên gần đây; fallback nhẹ nếu không áp dụng được */
+  @supports not (zoom: 1.5) {
+    .trading-root {
+      zoom: normal;
+      font-size: 150%;
+    }
+  }
+
+  .trading-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .trading-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
+  .trading-scroll::-webkit-scrollbar-track { background: transparent; }
+  .trading-scroll::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
+
+  @keyframes auth-card-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .auth-input {
+    @apply bg-card/60 border-border/60 backdrop-blur-sm transition-all duration-200;
+  }
+
+  .auth-input:focus {
+    @apply border-primary/60 ring-primary/30;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12);
+  }
+
+  .auth-btn {
+    @apply bg-primary text-primary-foreground font-semibold;
+    background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+    box-shadow: 0 4px 24px hsl(var(--primary) / 0.35);
+    transition: box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+  }
+
+  .auth-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 32px hsl(var(--primary) / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .auth-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .auth-btn:disabled {
+    opacity: 0.7;
+  }
+
+  .finwise-logo-text {
+    background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--primary)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .finwise-logo-icon {
+    @apply flex items-center justify-center w-10 h-10 rounded-xl border border-primary/30;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--primary) / 0.1));
+    box-shadow: 0 0 16px hsl(var(--primary) / 0.2);
+  }
+
+  .auth-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid hsl(var(--primary-foreground) / 0.3);
+    border-top-color: hsl(var(--primary-foreground));
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
