@@ -19,11 +19,21 @@ RUN npm run build
 # ─── Serve static với Nginx ─────────────────────────────────────────────────
 FROM nginx:1.27-alpine
 
+RUN apk add --no-cache gettext
+
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/runtime-config.js.template /docker/runtime-config.js.template
+COPY docker/docker-entrypoint.sh /docker/docker-entrypoint.sh
+RUN chmod +x /docker/docker-entrypoint.sh
+
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+ENV VITE_API_BASE_URL=
+ENV VITE_RAG_UPLOAD_FIELD=file
+
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -q --spider http://127.0.0.1/ || exit 1
 
+ENTRYPOINT ["/docker/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

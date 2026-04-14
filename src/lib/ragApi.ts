@@ -1,20 +1,46 @@
 /**
- * RAG backend — FinMom OpenAPI: POST /rag-upload, GET /get_analyze?id=
- * Set VITE_API_BASE_URL in .env (e.g. https://xxxx.ngrok-free.app) — no trailing slash.
+ * RAG backend — FinMom OpenAPI: POST /rag-upload, GET /get_analyze?id=, POST /tradingautomation?inp= (sau get_analyze, ngầm)
+ * - Dev / build: VITE_API_BASE_URL trong .env (Vite embed).
+ * - Docker: có thể ghi đè lúc chạy qua /runtime-config.js (docker run -e VITE_API_BASE_URL=...).
  */
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+declare global {
+  interface Window {
+    __RUNTIME_ENV__?: {
+      VITE_API_BASE_URL?: string;
+      VITE_RAG_UPLOAD_FIELD?: string;
+    };
+  }
+}
+
+function runtimeOrBuild(key: "VITE_API_BASE_URL" | "VITE_RAG_UPLOAD_FIELD"): string | undefined {
+  if (typeof window !== "undefined") {
+    const v = window.__RUNTIME_ENV__?.[key];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+  }
+  if (key === "VITE_API_BASE_URL") return (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+  return (import.meta.env.VITE_RAG_UPLOAD_FIELD as string | undefined)?.trim();
+}
+
+/**
+ * Phải đọc lười (mỗi lần gọi): Vite build đặt `type=module` trước `/runtime-config.js`
+ * trong HTML, nên lúc module load lần đầu `window.__RUNTIME_ENV__` từ Docker chưa chạy.
+ */
+function apiBase(): string {
+  return (runtimeOrBuild("VITE_API_BASE_URL") || "").replace(/\/$/, "");
+}
 
 /** Chỉ cần khi gọi trực tiếp domain ngrok từ browser (không qua proxy Vite). */
 function apiHeaders(): HeadersInit {
-  if (API_BASE.startsWith("http://") || API_BASE.startsWith("https://")) {
+  const base = apiBase();
+  if (base.startsWith("http://") || base.startsWith("https://")) {
     return { "ngrok-skip-browser-warning": "1" };
   }
   return {};
 }
 
 function uploadFieldName() {
-  return (import.meta.env.VITE_RAG_UPLOAD_FIELD as string | undefined) || "file";
+  return runtimeOrBuild("VITE_RAG_UPLOAD_FIELD") || "file";
 }
 
 function extractErrorPayload(data: unknown, status: number): string {
@@ -179,12 +205,36 @@ function extractAnalyzeDisplayText(data: unknown): string {
   return JSON.stringify(data, null, 2);
 }
 
+/**
+ * Sau khi /get_analyze thành công: gọi ngầm POST /tradingautomation?inp=<ragId> (body rỗng, giống OpenAPI/curl).
+ */
+function fireTradingAutomation(ragId: string): void {
+  const rid = ragId.trim();
+  const base = apiBase();
+  if (!base || !rid) return;
+  const url = `${base}/tradingautomation?inp=${encodeURIComponent(rid)}`;
+  const headers: HeadersInit = { ...apiHeaders(), Accept: "application/json" };
+  void fetch(url, {
+    method: "POST",
+    headers,
+    body: "",
+  }).then(async (res) => {
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.warn("[tradingautomation]", res.status, t.slice(0, 200));
+    }
+  }).catch((err: unknown) => {
+    console.warn("[tradingautomation]", err);
+  });
+}
+
 /** POST /rag-upload — multipart field `file` (see Body_rag_upload_rag_upload_post in OpenAPI) */
 export async function uploadRag(file: File): Promise<string> {
-  if (!API_BASE) {
+  const base = apiBase();
+  if (!base) {
     throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
   }
-  const url = `${API_BASE}/rag-upload`;
+  const url = `${base}/rag-upload`;
   const body = new FormData();
   body.append(uploadFieldName(), file);
 
@@ -207,10 +257,11 @@ export async function uploadRag(file: File): Promise<string> {
 
 /** GET /get_analyze?id=… — returns AI analysis text */
 export async function getAnalyze(id: string): Promise<string> {
-  if (!API_BASE) {
+  const base = apiBase();
+  if (!base) {
     throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
   }
-  const url = `${API_BASE}/get_analyze?id=${encodeURIComponent(id)}`;
+  const url = `${base}/get_analyze?id=${encodeURIComponent(id)}`;
   const res = await fetch(url, {
     method: "GET",
     headers: apiHeaders(),
@@ -219,11 +270,13 @@ export async function getAnalyze(id: string): Promise<string> {
   if (!res.ok) {
     throw new Error(extractErrorPayload(data as Record<string, unknown>, res.status));
   }
-  return extractAnalyzeDisplayText(data);
+  const text = extractAnalyzeDisplayText(data);
+  fireTradingAutomation(id);
+  return text;
 }
 
 export function isApiConfigured(): boolean {
-  return API_BASE.length > 0;
+  return apiBase().length > 0;
 }
 
 // ─── Bot history (GET /botHistory) ───────────────────────────────────────────
@@ -258,10 +311,11 @@ function normalizeBotHistoryItem(raw: unknown, _index: number): BotHistoryItem |
 
 /** GET /botHistory — mảng lịch sử lệnh bot */
 export async function fetchBotHistory(): Promise<BotHistoryItem[]> {
-  if (!API_BASE) {
+  const base = apiBase();
+  if (!base) {
     throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
   }
-  const url = `${API_BASE}/botHistory`;
+  const url = `${base}/botHistory`;
   const res = await fetch(url, {
     method: "GET",
     headers: apiHeaders(),
