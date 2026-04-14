@@ -79,7 +79,7 @@ function collectStringLeaves(data: unknown): string[] {
   return [];
 }
 
-/** Định dạng object phân tích chiến lược (như trong chuỗi JSON từ API). */
+/** Định dạng object phân tích chiến lược (schema coin / metric_or_model / logic_analysis / pros / cons / summary). */
 function formatStrategyPayload(o: Record<string, unknown>): string {
   const lines: string[] = [];
   if (typeof o.coin === "string") lines.push(`Cặp: ${o.coin}`);
@@ -96,7 +96,56 @@ function formatStrategyPayload(o: Record<string, unknown>): string {
       if (typeof p === "string") lines.push(`• ${p}`);
     }
   }
+  if (Array.isArray(o.cons) && o.cons.length > 0) {
+    lines.push("", "— Nhược điểm —");
+    for (const c of o.cons) {
+      if (typeof c === "string") lines.push(`• ${c}`);
+    }
+  }
   return lines.join("\n").trim();
+}
+
+/**
+ * Bóc khối ```json ... ``` (hoặc JSON thuần) rồi parse object — dùng cho lá chuỗi từ GET /get_analyze dạng [[ "...json..." ]].
+ */
+function tryParseStrategyObjectFromString(s: string): Record<string, unknown> | null {
+  let t = s.trim();
+  if (!t) return null;
+
+  const fenced = /^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/im.exec(t);
+  if (fenced) t = fenced[1].trim();
+  else if (t.startsWith("```")) {
+    t = t.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```\s*$/m, "").trim();
+  }
+
+  const tryJson = (raw: string): Record<string, unknown> | null => {
+    try {
+      const v = JSON.parse(raw) as unknown;
+      if (v && typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+    } catch {
+      /* ignore */
+    }
+    return null;
+  };
+
+  let obj = tryJson(t);
+  if (obj) return obj;
+
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start >= 0 && end > start) obj = tryJson(t.slice(start, end + 1));
+  return obj;
+}
+
+function isStrategySchemaObject(o: Record<string, unknown>): boolean {
+  return (
+    typeof o.coin === "string" ||
+    typeof o.metric_or_model === "string" ||
+    typeof o.logic_analysis === "string" ||
+    typeof o.summary === "string" ||
+    (Array.isArray(o.pros) && o.pros.length > 0) ||
+    (Array.isArray(o.cons) && o.cons.length > 0)
+  );
 }
 
 /**
@@ -115,15 +164,10 @@ function extractAnalyzeDisplayText(data: unknown): string {
   const leaves = collectStringLeaves(data);
   for (const s of leaves) {
     const t = s.trim();
-    if (t.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(t) as unknown;
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return formatStrategyPayload(parsed as Record<string, unknown>);
-        }
-      } catch {
-        /* bỏ qua, thử chuỗi khác */
-      }
+    if (!t) continue;
+    const obj = tryParseStrategyObjectFromString(t);
+    if (obj && isStrategySchemaObject(obj)) {
+      return formatStrategyPayload(obj);
     }
   }
 
@@ -180,4 +224,54 @@ export async function getAnalyze(id: string): Promise<string> {
 
 export function isApiConfigured(): boolean {
   return API_BASE.length > 0;
+}
+
+// ─── Bot history (GET /botHistory) ───────────────────────────────────────────
+
+export type BotHistoryItem = {
+  bot_name: string;
+  bot_action: string;
+  analysis: string | null;
+  status: string | null;
+  created_at: string;
+};
+
+function normalizeBotHistoryItem(raw: unknown, _index: number): BotHistoryItem | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const bot_name = typeof o.bot_name === "string" ? o.bot_name.trim() : "";
+  const bot_action = typeof o.bot_action === "string" ? o.bot_action.trim() : "";
+  const analysis =
+    o.analysis === null || o.analysis === undefined ? null : String(o.analysis).trim() || null;
+  const status =
+    o.status === null || o.status === undefined ? null : String(o.status).trim().toUpperCase() || null;
+  const created_at = typeof o.created_at === "string" ? o.created_at.trim() : "";
+  if (!bot_action && !bot_name) return null;
+  return {
+    bot_name: bot_name || "—",
+    bot_action: bot_action || "—",
+    analysis,
+    status,
+    created_at: created_at || new Date(0).toISOString(),
+  };
+}
+
+/** GET /botHistory — mảng lịch sử lệnh bot */
+export async function fetchBotHistory(): Promise<BotHistoryItem[]> {
+  if (!API_BASE) {
+    throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
+  }
+  const url = `${API_BASE}/botHistory`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: apiHeaders(),
+  });
+  const data = await parseJson(res);
+  if (!res.ok) {
+    throw new Error(extractErrorPayload(data as Record<string, unknown>, res.status));
+  }
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row, i) => normalizeBotHistoryItem(row, i))
+    .filter((x): x is BotHistoryItem => x !== null);
 }

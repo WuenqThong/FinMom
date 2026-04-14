@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { NavLink } from "@/components/NavLink";
 
-import dashboardImage from "@/assets/cryptix/dashboard.png";
-import stepAccount from "@/assets/cryptix/step-account.png";
-import stepWallet from "@/assets/cryptix/step-wallet.png";
-import stepTrade from "@/assets/cryptix/step-trade.png";
-import avatarAlex from "@/assets/cryptix/avatar-alex.png";
+import dashboardImage from "@/assets/dashboard.png";
+import stepAccount from "@/assets/step-account.png";
+import stepWallet from "@/assets/step-wallet.png";
+import stepTrade from "@/assets/step-trade.png";
+import avatarAlex from "@/assets/avatar-alex.png";
 
 type SectionId = "hero" | "trading" | "how" | "testimonials" | "pricing" | "faq";
 
@@ -85,13 +85,13 @@ const plans = [
 ];
 
 const faqs = [
-  "What is Cryptix?",
-  "Is Cryptix secure?",
+  "What is FinMom?",
+  "Is FinMom secure?",
   "Which cryptocurrencies are supported?",
   "What are the fees for transactions?",
   "How fast are transactions?",
   "Do I need to verify my identity?",
-  "Can I access Cryptix on mobile?",
+  "Can I access FinMom on mobile?",
   "How can I contact support?",
 ];
 
@@ -103,11 +103,11 @@ const symbols = [
   { name: "Ethereum", price: "$3875.32", change: "+1.21%" },
 ];
 
-interface CryptixPageProps {
+interface FinMomPageProps {
   focus?: SectionId;
 }
 
-export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
+export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
   const navigate = useNavigate();
   const visibleSections =
     focus === "hero"
@@ -155,21 +155,21 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
                 Take Control of Your Digital Assets
               </h1>
               <p className="mt-6 max-w-2xl text-lg text-muted-foreground md:text-2xl">
-                Cryptix offers a secure experience for managing your digital assets. Instant transactions, optimized
+                FinMom offers a secure experience for managing your digital assets. Instant transactions, optimized
                 fees, and premium design.
               </p>
               <Button className="mt-8 rounded-full px-8 py-6 text-base font-semibold">Get started now</Button>
 
-              <div className="mt-14 space-y-2 text-sm text-muted-foreground">
-                <p>They trust us</p>
-                <p className="text-foreground">★★★★★ 4,9 G</p>
+              <div className="mt-20 space-y-2 text-sm text-muted-foreground">
+                <p>Đánh giá từ người dùng</p>
+                <p className="text-foreground">★★★★★ 4,9 </p>
               </div>
 
               <div className="mt-12 h-[2px] w-full max-w-5xl hero-line" aria-hidden="true" />
 
               <img
                 src={dashboardImage}
-                alt="Cryptix dashboard preview"
+                alt="FinMom dashboard preview"
                 className="glass-panel mt-0 w-full max-w-5xl rounded-3xl object-cover"
                 loading="eager"
               />
@@ -181,7 +181,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
       {visibleSections.has("hero") && (
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8" aria-labelledby="benefits-title">
           <h2 id="benefits-title" className="text-3xl font-semibold md:text-5xl">
-            Why Choose Cryptix?
+            Why Choose FinMom?
           </h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
             Benefits designed to provide a seamless, secure, and accessible experience for all users.
@@ -272,7 +272,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
             Trusted by Crypto Enthusiasts Worldwide
           </h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
-            Join a growing community of investors who choose Cryptix for its seamless experience, security, and
+            Join a growing community of investors who choose FinMom for its seamless experience, security, and
             premium design.
           </p>
 
@@ -286,7 +286,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
                 </div>
               </div>
               <p className="mt-6 text-lg">
-                “Cryptix makes crypto trading effortless. Fast transactions, low fees, and a sleek interface—exactly
+                FinMom makes crypto trading effortless. Fast transactions, low fees, and a sleek interface—exactly
                 what I needed.”
               </p>
             </CardContent>
@@ -341,7 +341,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
             Your Questions, Answered
           </h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
-            Find everything you need to know about Cryptix, from security to supported assets.
+            Find everything you need to know about FinMom, from security to supported assets.
           </p>
 
           <Card className="glass-panel mt-10">
@@ -351,7 +351,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
                   <AccordionItem key={item} value={`faq-${index}`}>
                     <AccordionTrigger>{item}</AccordionTrigger>
                     <AccordionContent>
-                      Cryptix offers secure infrastructure, optimized fees, and a premium trading experience designed
+                      FinMom offers secure infrastructure, optimized fees, and a premium trading experience designed
                       for both beginners and advanced users.
                     </AccordionContent>
                   </AccordionItem>
@@ -364,7 +364,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
 
       {visibleSections.size === 1 && focus !== "hero" && (
         <section className="mx-auto max-w-6xl px-5 pb-20 sm:px-8">
-          <h2 className="text-3xl font-semibold md:text-5xl">Why Choose Cryptix?</h2>
+          <h2 className="text-3xl font-semibold md:text-5xl">Why Choose FinMom?</h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
             Benefits designed to provide a seamless, secure, and accessible experience for all users.
           </p>
@@ -390,7 +390,7 @@ export default function CryptixPage({ focus = "hero" }: CryptixPageProps) {
           <CardContent className="space-y-6 px-6 py-12 sm:px-10">
             <h2 className="text-balance text-3xl font-semibold md:text-5xl">Ready to take control of your crypto?</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Join thousands of users who trust Cryptix for secure, seamless, and efficient cryptocurrency
+              Join thousands of users who trust FinMom for secure, seamless, and efficient cryptocurrency
               transactions.
             </p>
             <Button className="rounded-full px-8 py-6 text-base">

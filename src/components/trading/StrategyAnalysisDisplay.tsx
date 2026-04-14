@@ -5,6 +5,8 @@ import {
   ListChecks,
   Coins,
   Wrench,
+  FileText,
+  AlertCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,6 +14,118 @@ import { cn } from "@/lib/utils";
 
 type Meta = { pair?: string; metrics?: string };
 type SectionBlock = { id: string; title: string; body: string };
+
+/** Payload JSON từ API (ví dụ { symbol, indicators[], summary }) */
+export type StrategyJsonPayload = {
+  symbol: string;
+  indicators: string[];
+  summary: string;
+};
+
+/** Bóc ```json ... ``` hoặc chuỗi JSON thuần → object chiến lược, hoặc null nếu không khớp. */
+export function tryParseStrategyJson(text: string): StrategyJsonPayload | null {
+  let s = text.trim();
+  const fenced = /^```(?:json)?\s*\r?\n?([\s\S]*?)\r?\n?```\s*$/i.exec(s);
+  if (fenced) s = fenced[1].trim();
+  else if (s.startsWith("```")) {
+    s = s.replace(/^```[a-zA-Z]*\s*/m, "").replace(/\s*```$/m, "").trim();
+  }
+
+  const tryPayload = (raw: string): StrategyJsonPayload | null => {
+    try {
+      const o = JSON.parse(raw) as unknown;
+      if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+      const obj = o as Record<string, unknown>;
+
+      const symbol = typeof obj.symbol === "string" ? obj.symbol.trim() : "";
+      const summary = typeof obj.summary === "string" ? obj.summary.trim() : "";
+
+      let indicators: string[] = [];
+      if (Array.isArray(obj.indicators)) {
+        indicators = obj.indicators
+          .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+          .map((x) => x.trim());
+      } else if (typeof obj.indicators === "string" && obj.indicators.trim()) {
+        indicators = [obj.indicators.trim()];
+      }
+
+      const hasContent = symbol.length > 0 || summary.length > 0 || indicators.length > 0;
+      if (!hasContent) return null;
+
+      return {
+        symbol: symbol || "—",
+        indicators,
+        summary: summary || "—",
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const direct = tryPayload(s);
+  if (direct) return direct;
+
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    return tryPayload(s.slice(start, end + 1));
+  }
+
+  return null;
+}
+
+function StrategyJsonAnalysisView({ data }: { data: StrategyJsonPayload }) {
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-3 duration-500">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5 shadow-[0_0_20px_-8px_hsl(var(--primary)/0.35)]">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/25">
+            <Coins className="h-4 w-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Cặp giao dịch</p>
+            <p className="mt-0.5 truncate font-mono text-sm font-semibold text-foreground">{data.symbol}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-muted/25 px-3 py-2.5">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-border/80">
+            <Wrench className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Chỉ báo</p>
+            {data.indicators.length === 0 ? (
+              <p className="mt-1 text-[12px] text-muted-foreground">—</p>
+            ) : (
+              <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                {data.indicators.map((name) => (
+                  <li
+                    key={name}
+                    className="rounded-md border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground/95"
+                  >
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border/60 bg-gradient-to-br from-card/90 to-card/40 p-3 ring-1 ring-inset ring-white/[0.04]">
+        <div className="mb-2 flex items-center gap-2 border-b border-border/40 pb-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-transparent text-primary shadow-inner ring-1 ring-primary/15">
+            <FileText className="h-3.5 w-3.5" strokeWidth={2.2} />
+          </div>
+          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Tóm tắt chiến lược</h3>
+        </div>
+        <div className="text-[12px] leading-relaxed text-foreground/95">
+          <p className="whitespace-pre-wrap">{highlightTerms(data.summary)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function slug(s: string) {
   return s
@@ -150,6 +264,9 @@ function visualForSectionTitle(title: string): { icon: LucideIcon; accent: strin
   if (t.includes("ưu điểm") || t.includes("uu điểm")) {
     return { icon: ListChecks, accent: "from-violet-500/20 to-transparent" };
   }
+  if (t.includes("nhược") || /\bcons\b/.test(t)) {
+    return { icon: AlertCircle, accent: "from-rose-500/15 to-transparent" };
+  }
   return { icon: Sparkles, accent: "from-primary/20 to-transparent" };
 }
 
@@ -197,6 +314,11 @@ function SectionShell({
 }
 
 export function StrategyAnalysisDisplay({ text }: { text: string }) {
+  const jsonPayload = useMemo(() => tryParseStrategyJson(text), [text]);
+  if (jsonPayload) {
+    return <StrategyJsonAnalysisView data={jsonPayload} />;
+  }
+
   const parsed = useMemo(() => parseStrategyAnalysis(text), [text]);
 
   if (parsed.rawFallback) {
@@ -228,7 +350,7 @@ export function StrategyAnalysisDisplay({ text }: { text: string }) {
                   <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Cặp giao dịch
                   </p>
-                  <p className="truncate font-mono text-sm font-semibold text-foreground">
+                  <p className="truncate text-sm font-semibold text-foreground">
                     {meta.pair}
                   </p>
                 </div>
@@ -254,6 +376,7 @@ export function StrategyAnalysisDisplay({ text }: { text: string }) {
       {sections.map((sec, i) => {
         const { icon: Icon, accent } = visualForSectionTitle(sec.title);
         const isPros = /ưu điểm/i.test(sec.title) || /\buu\s*điểm/i.test(sec.title);
+        const isCons = /nhược/i.test(sec.title) || /\bcons\b/i.test(sec.title);
 
         if (isPros) {
           const items = parseProsLines(sec.body);
@@ -273,6 +396,32 @@ export function StrategyAnalysisDisplay({ text }: { text: string }) {
                     style={{ animationDelay: `${i * 70 + j * 45}ms` }}
                   >
                     <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+                    <span className="text-foreground/90">{highlightTerms(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            </SectionShell>
+          );
+        }
+
+        if (isCons) {
+          const items = parseProsLines(sec.body);
+          return (
+            <SectionShell
+              key={sec.id}
+              title={sec.title}
+              icon={AlertCircle}
+              accentClass={accent}
+              index={i}
+            >
+              <ul className="space-y-2">
+                {items.map((item, j) => (
+                  <li
+                    key={j}
+                    className="animate-in fade-in slide-in-from-left-1 fill-mode-both flex gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-[11.5px] leading-relaxed duration-400"
+                    style={{ animationDelay: `${i * 70 + j * 45}ms` }}
+                  >
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/90 shadow-[0_0_8px_hsl(350_90%_60%/0.45)]" />
                     <span className="text-foreground/90">{highlightTerms(item)}</span>
                   </li>
                 ))}

@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef, useCallback, DragEvent } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, DragEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   TrendingUp, Upload, FileText, CheckCircle2, Loader2,
   X, BarChart2, Clock, Activity, TrendingDown,
-  Cpu, Circle, History, Zap, ShieldCheck,
+  Circle, History, Zap, ShieldCheck,
   AlertCircle, Bot, BookOpen, Target, Percent, Award, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAnalyze, isApiConfigured, uploadRag } from "@/lib/ragApi";
+import { getAnalyze, isApiConfigured, uploadRag, fetchBotHistory, type BotHistoryItem } from "@/lib/ragApi";
 import { StrategyAnalysisDisplay } from "@/components/trading/StrategyAnalysisDisplay";
+import { BotHistoryTable } from "@/components/trading/BotHistoryTable";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type StrategyState = "idle" | "dragging" | "processing" | "loaded" | "error";
@@ -17,32 +18,12 @@ type OrderTab = "pending" | "active" | "closed";
 type RightTab = "orders" | "analysis" | "performance" | "recent";
 type Side = "LONG" | "SHORT";
 
-interface PendingOrder {
-  id: string; symbol: string; side: Side;
-  targetPrice: number; condition: string; confidence: number;
-}
-interface ActiveOrder {
-  id: string; symbol: string; side: Side;
-  entryPrice: number; currentPrice: number;
-  size: number; pnl: number; pnlPct: number; duration: string;
-}
 interface ClosedOrder {
   id: string; symbol: string; side: Side;
   entryPrice: number; exitPrice: number;
   size: number; finalPnl: number; finalPnlPct: number; closedAt: string;
 }
 // ─── Mock data ──────────────────────────────────────────────────────────────
-const INIT_PENDING: PendingOrder[] = [
-  { id:"p1", symbol:"BTC/USDT", side:"LONG",  targetPrice:68500, condition:"RSI(14)<35 + MA Cross",    confidence:87 },
-  { id:"p2", symbol:"ETH/USDT", side:"SHORT", targetPrice:3420,  condition:"Resistance zone break",     confidence:72 },
-  { id:"p3", symbol:"SOL/USDT", side:"LONG",  targetPrice:148.5, condition:"Bullish engulfing D1",      confidence:65 },
-  { id:"p4", symbol:"BNB/USDT", side:"LONG",  targetPrice:595,   condition:"Support bounce + volume",   confidence:79 },
-];
-const INIT_ACTIVE: ActiveOrder[] = [
-  { id:"a1", symbol:"BTC/USDT", side:"LONG",  entryPrice:68200, currentPrice:69450, size:0.03, pnl:37.5,  pnlPct:1.83,  duration:"2h 14m" },
-  { id:"a2", symbol:"ETH/USDT", side:"SHORT", entryPrice:3520,  currentPrice:3485,  size:0.5,  pnl:17.5,  pnlPct:0.99,  duration:"45m"    },
-  { id:"a3", symbol:"SOL/USDT", side:"LONG",  entryPrice:152,   currentPrice:149.2, size:3,    pnl:-8.4,  pnlPct:-1.84, duration:"1h 02m" },
-];
 const CLOSED: ClosedOrder[] = [
   { id:"c1", symbol:"BTC/USDT", side:"LONG",  entryPrice:67200, exitPrice:69800, size:0.05, finalPnl:130,  finalPnlPct:3.87,  closedAt:"Today 09:42"   },
   { id:"c2", symbol:"ETH/USDT", side:"SHORT", entryPrice:3600,  exitPrice:3450,  size:0.8,  finalPnl:120,  finalPnlPct:4.17,  closedAt:"Today 07:15"   },
@@ -54,23 +35,28 @@ const CLOSED: ClosedOrder[] = [
 const EQUITY = [10000,10250,10180,10450,10380,10720,10640,10890,11050,10920,11200,11380,11260,11540,11720,11680,11950,12100,12050,12340];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+/** Chiều ngang cố định — trùng với track grid cột Side (w-[5.25rem]) */
 function SideBadge({ side }: { side: Side }) {
   const isLong = side === "LONG";
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${
-      isLong ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25"
-              : "bg-red-500/15 text-red-400 ring-1 ring-red-500/25"}`}>
+    <span
+      className={`inline-flex h-6 w-[5.25rem] shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-[9px] font-bold tracking-wide ${
+        isLong
+          ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25"
+          : "bg-red-500/15 text-red-400 ring-1 ring-red-500/25"
+      }`}
+    >
       {isLong ? "▲" : "▼"} {side}
     </span>
   );
 }
 
-function PnLValue({ v, p }: { v: number; p: number }) {
+function PnLValue({ v, p, compact }: { v: number; p: number; compact?: boolean }) {
   const pos = v >= 0;
   return (
     <div className={`font-mono tabular-nums leading-none transition-colors duration-500 ${pos ? "text-emerald-400" : "text-red-400"}`}>
-      <span className="text-sm font-bold">{pos?"+":""}{v.toFixed(2)}$</span>
-      <span className="ml-1 text-[10px] opacity-70">({pos?"+":""}{p.toFixed(2)}%)</span>
+      <span className={compact ? "text-xs font-bold" : "text-sm font-bold"}>{pos?"+":""}{v.toFixed(2)}$</span>
+      <span className={`ml-0.5 opacity-70 ${compact ? "text-[9px]" : "text-[10px]"}`}>({pos?"+":""}{p.toFixed(2)}%)</span>
     </div>
   );
 }
@@ -158,9 +144,11 @@ export default function TradingPage() {
   const [isDrag, setIsDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Orders
-  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>(INIT_ACTIVE);
-  const [orderTab, setOrderTab] = useState<OrderTab>("active");
+  // Orders — GET /botHistory
+  const [botHistory, setBotHistory] = useState<BotHistoryItem[]>([]);
+  const [botHistoryLoading, setBotHistoryLoading] = useState(false);
+  const [botHistoryError, setBotHistoryError] = useState<string | null>(null);
+  const [orderTab, setOrderTab] = useState<OrderTab>("pending");
   const [rightTab, setRightTab] = useState<RightTab>("orders");
 
   /** AI analysis from GET /get_analyze (read-only display in Command panel) */
@@ -168,18 +156,33 @@ export default function TradingPage() {
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzeEndRef = useRef<HTMLDivElement>(null);
 
-  // Realtime PnL
   useEffect(() => {
-    const t = setInterval(() => {
-      setActiveOrders(prev => prev.map(o => {
-        const delta = (Math.random()-0.48) * o.entryPrice * 0.0007;
-        const cur = o.currentPrice + delta;
-        const pnl = o.side==="LONG" ? (cur-o.entryPrice)*o.size : (o.entryPrice-cur)*o.size;
-        const pct = ((cur-o.entryPrice)/o.entryPrice)*100*(o.side==="LONG"?1:-1);
-        return { ...o, currentPrice:cur, pnl, pnlPct:pct };
-      }));
-    }, 1100);
-    return () => clearInterval(t);
+    if (!isApiConfigured()) {
+      setBotHistory([]);
+      setBotHistoryError(null);
+      setBotHistoryLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setBotHistoryLoading(true);
+    setBotHistoryError(null);
+    void fetchBotHistory()
+      .then((rows) => {
+        if (!cancelled) setBotHistory(rows);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : "Không tải được /botHistory";
+          setBotHistoryError(msg);
+          setBotHistory([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBotHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -230,7 +233,20 @@ export default function TradingPage() {
   const wins = CLOSED.filter(o=>o.finalPnl>0).length;
   const lossCount = CLOSED.length - wins;
   const winRate = CLOSED.length ? Math.round((wins / CLOSED.length) * 100) : 0;
-  const totalActivePnl = activeOrders.reduce((s,o)=>s+o.pnl,0);
+
+  const isClosedBotStatus = (s: string | null | undefined) => {
+    const u = (s ?? "").trim().toUpperCase();
+    return u === "SUCCESS" || u === "FAILED";
+  };
+
+  const botHistoryPending = useMemo(
+    () => botHistory.filter((b) => !isClosedBotStatus(b.status)),
+    [botHistory],
+  );
+  const botHistoryClosed = useMemo(
+    () => botHistory.filter((b) => isClosedBotStatus(b.status)),
+    [botHistory],
+  );
 
   const winningTrades = CLOSED.filter((o) => o.finalPnl > 0);
   const losingTrades = CLOSED.filter((o) => o.finalPnl < 0);
@@ -297,10 +313,13 @@ export default function TradingPage() {
       </header>
 
       {/* ── Body: 2-column grid (hiệu suất + lệnh gần đây gộp vào tab cột 2) ── */}
-      <div className="flex-1 grid grid-cols-[500px_1fr] gap-3 p-3 overflow-hidden" style={{ height:"calc(100vh - 49px)" }}>
+      <div
+        className="grid min-h-0 flex-1 grid-cols-[500px_1fr] items-stretch gap-3 overflow-hidden p-3"
+        style={{ height: "calc(100vh - 49px)" }}
+      >
 
-        {/* ════ COL 1 — STRATEGY UPLOAD ════ */}
-        <div className="flex flex-col gap-5 min-h-0 overflow-y-auto trading-scroll">
+        {/* ════ COL 1 — STRATEGY UPLOAD — Analysis flex-1 để đáy khớp cột 2 ════ */}
+        <div className="flex h-full min-h-0 flex-col gap-5 overflow-hidden">
 
           {/* Upload card */}
           <Card className="glass-panel shrink-0">
@@ -387,16 +406,15 @@ export default function TradingPage() {
             </CardContent>
           </Card>
 
-          {/* AI analysis (read-only — GET /get_analyze) */}
+          {/* AI analysis (read-only — GET /get_analyze) — chiều cao còn lại = đáy cùng hàng với cột phải */}
           <Card
-            className="glass-panel relative flex flex-col overflow-hidden border-primary/15 shadow-[0_0_40px_-12px_hsl(var(--primary)/0.25)]"
-            style={{ minHeight: 480 }}
+            className="glass-panel relative flex min-h-0 flex-1 flex-col overflow-hidden border-primary/15 shadow-[0_0_40px_-12px_hsl(var(--primary)/0.25)]"
           >
             <div
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent"
               aria-hidden
             />
-            <CardContent className="p-3 flex flex-col h-full min-h-0">
+            <CardContent className="flex h-full min-h-0 flex-1 flex-col p-3">
               <div className="mb-3 flex shrink-0 items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-primary/5 ring-1 ring-primary/20">
                   <Zap className="h-4 w-4 text-primary" />
@@ -415,8 +433,7 @@ export default function TradingPage() {
               </div>
 
               <div
-                className="flex-1 overflow-y-auto pr-1 trading-scroll [scrollbar-gutter:stable]"
-                style={{ maxHeight: 512 }}
+                className="min-h-0 flex-1 overflow-y-auto pr-1 trading-scroll [scrollbar-gutter:stable]"
                 tabIndex={0}
                 role="region"
                 aria-label="Phân tích AI"
@@ -480,16 +497,6 @@ export default function TradingPage() {
               </button>
             ))}
 
-            {/* Active PnL summary pill */}
-            {rightTab==="orders" && orderTab==="active" && (
-              <div className={`ml-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-mono font-semibold border ${
-                totalActivePnl>=0
-                  ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-400"
-                  : "bg-red-500/10 border-red-500/25 text-red-400"}`}>
-                <TrendingUp className="h-3 w-3"/>
-                Tổng PnL: {totalActivePnl>=0?"+":""}{totalActivePnl.toFixed(2)}$
-              </div>
-            )}
           </div>
 
           {/* ── ORDERS TAB ── */}
@@ -499,9 +506,9 @@ export default function TradingPage() {
                 {/* Sub-tabs */}
                 <div className="flex gap-1 mb-3 shrink-0">
                   {([
-                    { k:"active",  l:"Đang chạy",    icon:Activity, n:activeOrders.length  },
-                    { k:"pending", l:"Chờ vào lệnh", icon:Clock,    n:INIT_PENDING.length  },
-                    { k:"closed",  l:"Đã đóng",      icon:History,  n:CLOSED.length        },
+                    { k:"active",  l:"Đang chạy",    icon:Activity, n:0 },
+                    { k:"pending", l:"Chờ vào lệnh", icon:Clock,    n:botHistoryPending.length },
+                    { k:"closed",  l:"Đã đóng",      icon:History,  n:botHistoryClosed.length },
                   ] as { k:OrderTab; l:string; icon:React.ElementType; n:number }[]).map(({ k,l,icon:Icon,n }) => (
                     <button key={k} onClick={()=>setOrderTab(k)}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-medium transition-all ${
@@ -512,91 +519,44 @@ export default function TradingPage() {
                   ))}
                 </div>
 
-                {/* ─ Active ─ */}
-                {orderTab==="active" && (
-                  <div className="flex-1 overflow-y-auto trading-scroll space-y-2 min-h-0">
-                    {activeOrders.map(o => (
-                      <div key={o.id} className={`grid items-center gap-2 rounded-xl px-4 py-3 border transition-colors duration-300 ${
-                        o.pnl>=0
-                          ? "bg-emerald-500/5 border-emerald-500/15"
-                          : "bg-red-500/5 border-red-500/15"}`}
-                        style={{ gridTemplateColumns:"1fr auto 1fr 1fr 1fr auto" }}>
-                        <div className="font-mono font-bold text-xs">{o.symbol}</div>
-                        <SideBadge side={o.side}/>
-                        <div className="text-xs text-muted-foreground font-mono">
-                          <div className="text-[9px] text-muted-foreground/60">ENTRY</div>
-                          ${o.entryPrice.toLocaleString()}
-                        </div>
-                        <div className="text-xs font-mono">
-                          <div className="text-[9px] text-muted-foreground/60">CURRENT</div>
-                          ${o.currentPrice.toFixed(1)}
-                        </div>
-                        <PnLValue v={o.pnl} p={o.pnlPct}/>
-                        <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5"/>{o.duration}
-                        </div>
-                      </div>
-                    ))}
+                {botHistoryLoading && (
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 py-12 text-muted-foreground">
+                    <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                    <span className="text-sm">Đang tải /botHistory…</span>
                   </div>
                 )}
 
-                {/* ─ Pending ─ */}
-                {orderTab==="pending" && (
-                  <div className="flex-1 overflow-y-auto trading-scroll min-h-0">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          {["Symbol","Side","Target","Điều kiện","Conf."].map(h=>(
-                            <th key={h} className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/25">
-                        {INIT_PENDING.map(o=>(
-                          <tr key={o.id} className="hover:bg-muted/20 transition-colors">
-                            <td className="py-2.5 font-mono font-bold">{o.symbol}</td>
-                            <td className="py-2.5"><SideBadge side={o.side}/></td>
-                            <td className="py-2.5 font-mono text-muted-foreground">${o.targetPrice.toLocaleString()}</td>
-                            <td className="py-2.5 text-muted-foreground max-w-[160px] truncate">{o.condition}</td>
-                            <td className="py-2.5">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-10 bg-border/40 rounded-full h-1">
-                                  <div className="bg-primary h-1 rounded-full" style={{ width:`${o.confidence}%`}}/>
-                                </div>
-                                <span className="text-primary text-[10px] font-bold">{o.confidence}%</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {!botHistoryLoading && botHistoryError && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400">{botHistoryError}</div>
+                )}
+
+                {!botHistoryLoading && !botHistoryError && !isApiConfigured() && (
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground">
+                    Cấu hình <span className="font-mono text-foreground">VITE_API_BASE_URL</span> trong .env để tải lịch sử bot từ{" "}
+                    <span className="font-mono text-foreground">/botHistory</span>.
                   </div>
                 )}
 
-                {/* ─ Closed ─ */}
-                {orderTab==="closed" && (
-                  <div className="flex-1 overflow-y-auto trading-scroll min-h-0">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          {["Symbol","Side","Entry","Exit","PnL","Khi đóng"].map(h=>(
-                            <th key={h} className="pb-2 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/25">
-                        {CLOSED.map(o=>(
-                          <tr key={o.id} className="hover:bg-muted/20 transition-colors">
-                            <td className="py-2.5 font-mono font-bold">{o.symbol}</td>
-                            <td className="py-2.5"><SideBadge side={o.side}/></td>
-                            <td className="py-2.5 font-mono text-muted-foreground">${o.entryPrice.toLocaleString()}</td>
-                            <td className="py-2.5 font-mono text-muted-foreground">${o.exitPrice.toLocaleString()}</td>
-                            <td className="py-2.5"><PnLValue v={o.finalPnl} p={o.finalPnlPct}/></td>
-                            <td className="py-2.5 text-muted-foreground">{o.closedAt}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {!botHistoryLoading && !botHistoryError && isApiConfigured() && (
+                  <div className="min-h-0 flex-1 overflow-y-auto trading-scroll pr-1">
+                    {orderTab === "active" && (
+                      <BotHistoryTable
+                        items={[]}
+                        emptyMessage="API /botHistory không có trạng thái vị thế đang mở. Chọn «Chờ vào lệnh» (PENDING / chưa xử lý) hoặc «Đã đóng» (SUCCESS / FAILED)."
+                      />
+                    )}
+                    {orderTab === "pending" && (
+                      <BotHistoryTable
+                        items={botHistoryPending}
+                        emptyMessage="Không có lệnh đang chờ."
+                      />
+                    )}
+                    {orderTab === "closed" && (
+                      <BotHistoryTable
+                        items={botHistoryClosed}
+                        emptyMessage="Chưa có lệnh đã đóng (SUCCESS / FAILED)."
+                      />
+                    )}
                   </div>
                 )}
               </CardContent>

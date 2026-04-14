@@ -176,21 +176,19 @@ All colors MUST be HSL.
     100% { width: 100%; }
   }
 
-  /* ── Trading page — phóng to 150% để chữ và control dễ đọc (demo / khách xem màn nhỏ) ── */
+  /*
+   * Trading: phóng toàn bộ UI ×1.35 (kể cả text-[9px], text-[10px]… — class px không theo rem html).
+   * Chỉ áp trong .trading-root, không đụng <html> / toast portal ngoài subtree.
+   */
   .trading-root {
-    zoom: 1.5;
+    zoom: 1.35;
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
     background-color: hsl(var(--background));
     background-image:
       radial-gradient(ellipse 60% 30% at 0% 0%, hsl(var(--primary) / 0.07), transparent 50%),
       radial-gradient(ellipse 40% 40% at 100% 100%, hsl(260 80% 60% / 0.05), transparent 50%);
-  }
-
-  /* Firefox: hỗ trợ zoom từ vài phiên gần đây; fallback nhẹ nếu không áp dụng được */
-  @supports not (zoom: 1.5) {
-    .trading-root {
-      zoom: normal;
-      font-size: 150%;
-    }
   }
 
   .trading-scroll {
