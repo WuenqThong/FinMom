@@ -10,7 +10,16 @@ import {
   type RightTab,
 } from "@/components/trading/TradingMainContainer";
 import { TradingUploadContainer, type StrategyState } from "@/components/trading/TradingUploadContainer";
-import { getAnalyze, isApiConfigured, uploadRag, fetchBotHistory, type BotHistoryItem } from "@/lib/ragApi";
+import {
+  getAnalyze,
+  isApiConfigured,
+  uploadRag,
+  fetchBotHistory,
+  persistLastRagSession,
+  readLastRagSession,
+  clearLastRagSession,
+  type BotHistoryItem,
+} from "@/lib/ragApi";
 
 export default function TradingPage() {
   const navigate = useNavigate();
@@ -59,6 +68,47 @@ export default function TradingPage() {
     };
   }, []);
 
+  /** F5: khôi phục phân tích từ ragId đã lưu hoặc GET /get_analyze không id (bản mới nhất trên server). */
+  useEffect(() => {
+    if (!isApiConfigured()) return;
+    const ac = new AbortController();
+    void (async () => {
+      const saved = readLastRagSession();
+      if (saved?.ragId) {
+        if (ac.signal.aborted) return;
+        setStrat("processing");
+        setStratFile(saved.fileName ?? "Phiên làm việc trước");
+        setAnalyzeText(null);
+        setAnalyzeError(null);
+        try {
+          const text = await getAnalyze(saved.ragId, { signal: ac.signal, fireTradingAutomation: false });
+          if (ac.signal.aborted) return;
+          setAnalyzeText(text.trim() || "(Không có nội dung phân tích.)");
+          setStrat("loaded");
+        } catch {
+          if (ac.signal.aborted) return;
+          clearLastRagSession();
+          setStrat("idle");
+          setStratFile(null);
+        }
+        return;
+      }
+
+      try {
+        const text = await getAnalyze(null, { signal: ac.signal, fireTradingAutomation: false });
+        if (ac.signal.aborted) return;
+        const t = text.trim();
+        if (!t) return;
+        setAnalyzeText(t);
+        setStrat("loaded");
+        setStratFile("Phân tích mới nhất (server)");
+      } catch {
+        /* Backend chưa hỗ trợ GET /get_analyze không tham số id */
+      }
+    })();
+    return () => ac.abort();
+  }, []);
+
   useEffect(() => {
     analyzeEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [analyzeText]);
@@ -79,6 +129,7 @@ export default function TradingPage() {
     try {
       const id = await uploadRag(file);
       const text = await getAnalyze(id);
+      persistLastRagSession(id, file.name);
       setAnalyzeText(text.trim() || "(Không có nội dung phân tích.)");
       setStrat("loaded");
     } catch (err) {
@@ -97,6 +148,7 @@ export default function TradingPage() {
   };
 
   const resetStrategy = () => {
+    clearLastRagSession();
     setStrat("idle");
     setStratFile(null);
     setAnalyzeText(null);
@@ -175,6 +227,7 @@ export default function TradingPage() {
             analyzeText={analyzeText}
             analyzeError={analyzeError}
             analyzeEndRef={analyzeEndRef}
+            onAnalyzeTextChange={(next) => setAnalyzeText(next)}
           />
         </section>
 

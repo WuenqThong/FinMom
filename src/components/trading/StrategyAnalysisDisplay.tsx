@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Sparkles,
   GitBranch,
@@ -7,6 +7,9 @@ import {
   Wrench,
   FileText,
   AlertCircle,
+  Pencil,
+  Check,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -74,7 +77,26 @@ export function tryParseStrategyJson(text: string): StrategyJsonPayload | null {
   return null;
 }
 
-function StrategyJsonAnalysisView({ data }: { data: StrategyJsonPayload }) {
+function StrategyJsonAnalysisView({
+  data,
+  onTextChange,
+}: {
+  data: StrategyJsonPayload;
+  onTextChange?: (next: string) => void;
+}) {
+  const editable = Boolean(onTextChange);
+  const [editingSummary, setEditingSummary] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState(data.summary);
+  useEffect(() => {
+    if (!editingSummary) setSummaryDraft(data.summary);
+  }, [data.summary, editingSummary]);
+
+  const saveSummary = () => {
+    const next: StrategyJsonPayload = { ...data, summary: summaryDraft.trim() || "—" };
+    onTextChange?.(JSON.stringify(next, null, 2));
+    setEditingSummary(false);
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-3 duration-500">
       <div className="grid gap-2 sm:grid-cols-2">
@@ -117,11 +139,53 @@ function StrategyJsonAnalysisView({ data }: { data: StrategyJsonPayload }) {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary/25 to-transparent text-primary shadow-inner ring-1 ring-primary/15">
             <FileText className="h-3.5 w-3.5" strokeWidth={2.2} />
           </div>
-          <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Tóm tắt chiến lược</h3>
+          <h3 className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            Tóm tắt chiến lược
+          </h3>
+          {editable && !editingSummary && (
+            <button
+              type="button"
+              className={editBtnClass}
+              aria-label="Chỉnh sửa tóm tắt"
+              onClick={() => setEditingSummary(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-        <div className="text-[12px] leading-relaxed text-foreground/95">
-          <p className="whitespace-pre-wrap">{highlightTerms(data.summary)}</p>
-        </div>
+        {editingSummary ? (
+          <div className="space-y-2">
+            <textarea
+              className={editTextareaClass}
+              value={summaryDraft}
+              onChange={(e) => setSummaryDraft(e.target.value)}
+              autoFocus
+              aria-label="Nội dung tóm tắt chiến lược"
+              placeholder="Nhập tóm tắt…"
+              onKeyDown={(e) => e.key === "Escape" && setEditingSummary(false)}
+            />
+            <div className="flex justify-end gap-1">
+              <button type="button" className={editBtnClass} aria-label="Lưu" onClick={saveSummary}>
+                <Check className="h-4 w-4 text-emerald-500" />
+              </button>
+              <button
+                type="button"
+                className={editBtnClass}
+                aria-label="Hủy"
+                onClick={() => {
+                  setSummaryDraft(data.summary);
+                  setEditingSummary(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-[12px] leading-relaxed text-foreground/95">
+            <p className="whitespace-pre-wrap">{highlightTerms(data.summary)}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -179,6 +243,25 @@ export function parseStrategyAnalysis(text: string): {
 
   return { meta, sections, rawFallback: null };
 }
+
+/** Ghép lại chuỗi phân tích sau khi sửa section / meta (khớp parseStrategyAnalysis). */
+export function serializeStrategyAnalysis(meta: Meta, sections: SectionBlock[]): string {
+  const head: string[] = [];
+  if (meta.pair?.trim()) head.push(`Cặp: ${meta.pair.trim()}`);
+  if (meta.metrics?.trim()) head.push(`Chỉ báo / mô hình: ${meta.metrics.trim()}`);
+  const parts: string[] = [];
+  if (head.length) parts.push(head.join("\n"));
+  for (const s of sections) {
+    parts.push(`— ${s.title} —\n${s.body}`);
+  }
+  return parts.join("\n\n");
+}
+
+const editBtnClass =
+  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const editTextareaClass =
+  "min-h-[140px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-[12px] leading-relaxed text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 function parseProsLines(body: string): string[] {
   return body
@@ -275,13 +358,15 @@ function SectionShell({
   icon: Icon,
   accentClass,
   index,
+  headerRight,
   children,
 }: {
   title: string;
   icon: LucideIcon;
   accentClass: string;
   index: number;
-  children: React.ReactNode;
+  headerRight?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div
@@ -304,37 +389,223 @@ function SectionShell({
         >
           <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
         </div>
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <h3 className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
           {title}
         </h3>
+        {headerRight}
       </div>
       {children}
     </div>
   );
 }
 
-export function StrategyAnalysisDisplay({ text }: { text: string }) {
-  const jsonPayload = useMemo(() => tryParseStrategyJson(text), [text]);
-  if (jsonPayload) {
-    return <StrategyJsonAnalysisView data={jsonPayload} />;
-  }
+function EditableSectionShell({
+  title,
+  icon,
+  accentClass,
+  index,
+  sectionId,
+  body,
+  editable,
+  onBodyCommit,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  accentClass: string;
+  index: number;
+  sectionId: string;
+  body: string;
+  editable: boolean;
+  onBodyCommit: (id: string, next: string) => void;
+  children: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(body);
+  useEffect(() => {
+    if (!editing) setDraft(body);
+  }, [body, editing]);
 
-  const parsed = useMemo(() => parseStrategyAnalysis(text), [text]);
+  const headerRight =
+    editable && !editing ? (
+      <button
+        type="button"
+        className={editBtnClass}
+        aria-label={`Chỉnh sửa: ${title}`}
+        onClick={() => setEditing(true)}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+    ) : null;
 
-  if (parsed.rawFallback) {
+  return (
+    <SectionShell title={title} icon={icon} accentClass={accentClass} index={index} headerRight={headerRight}>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            className={editTextareaClass}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            autoFocus
+            aria-label={`Chỉnh sửa nội dung: ${title}`}
+            placeholder="Nhập nội dung…"
+            onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+          />
+          <div className="flex justify-end gap-1">
+            <button
+              type="button"
+              className={editBtnClass}
+              aria-label="Lưu"
+              onClick={() => {
+                onBodyCommit(sectionId, draft);
+                setEditing(false);
+              }}
+            >
+              <Check className="h-4 w-4 text-emerald-500" />
+            </button>
+            <button
+              type="button"
+              className={editBtnClass}
+              aria-label="Hủy"
+              onClick={() => {
+                setDraft(body);
+                setEditing(false);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
+    </SectionShell>
+  );
+}
+
+function RawFallbackEditable({
+  raw,
+  editable,
+  onCommit,
+}: {
+  raw: string;
+  editable: boolean;
+  onCommit: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(raw);
+  useEffect(() => {
+    if (!editing) setDraft(raw);
+  }, [raw, editing]);
+
+  if (!editable) {
     return (
       <div className="animate-in fade-in zoom-in-95 duration-500">
         <div className="rounded-xl border border-border/50 bg-muted/20 p-3 ring-1 ring-inset ring-white/[0.03]">
-          <ProseBlock>{parsed.rawFallback}</ProseBlock>
+          <ProseBlock>{raw}</ProseBlock>
         </div>
       </div>
     );
   }
 
+  return (
+    <div className="animate-in fade-in zoom-in-95 duration-500">
+      <div className="relative rounded-xl border border-border/50 bg-muted/20 p-3 ring-1 ring-inset ring-white/[0.03]">
+        {!editing && (
+          <button
+            type="button"
+            className={cn(editBtnClass, "absolute right-2 top-2 z-10")}
+            aria-label="Chỉnh sửa nội dung"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              className={editTextareaClass}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              autoFocus
+              aria-label="Chỉnh sửa toàn bộ phân tích"
+              placeholder="Nhập nội dung…"
+              onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+            />
+            <div className="flex justify-end gap-1">
+              <button
+                type="button"
+                className={editBtnClass}
+                aria-label="Lưu"
+                onClick={() => {
+                  onCommit(draft);
+                  setEditing(false);
+                }}
+              >
+                <Check className="h-4 w-4 text-emerald-500" />
+              </button>
+              <button
+                type="button"
+                className={editBtnClass}
+                aria-label="Hủy"
+                onClick={() => {
+                  setDraft(raw);
+                  setEditing(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="pr-8">
+            <ProseBlock>{raw}</ProseBlock>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export type StrategyAnalysisDisplayProps = {
+  text: string;
+  /** Khi có: hiện icon bút trên từng khối để sửa tay; gọi lại với toàn bộ chuỗi phân tích đã cập nhật. */
+  onTextChange?: (next: string) => void;
+};
+
+export function StrategyAnalysisDisplay({ text, onTextChange }: StrategyAnalysisDisplayProps) {
+  const [draft, setDraft] = useState(text);
+  useEffect(() => setDraft(text), [text]);
+
+  const commitDraft = (next: string) => {
+    setDraft(next);
+    onTextChange?.(next);
+  };
+
+  const jsonPayload = useMemo(() => tryParseStrategyJson(draft), [draft]);
+  if (jsonPayload) {
+    return <StrategyJsonAnalysisView data={jsonPayload} onTextChange={onTextChange ? commitDraft : undefined} />;
+  }
+
+  const parsed = useMemo(() => parseStrategyAnalysis(draft), [draft]);
+
+  if (parsed.rawFallback) {
+    return (
+      <RawFallbackEditable raw={parsed.rawFallback} editable={Boolean(onTextChange)} onCommit={commitDraft} />
+    );
+  }
+
   const { meta, sections } = parsed;
 
+  const handleSectionCommit = (sectionId: string, newBody: string) => {
+    const p = parseStrategyAnalysis(draft);
+    if (p.rawFallback || p.sections.length === 0) return;
+    const nextSections = p.sections.map((s) => (s.id === sectionId ? { ...s, body: newBody } : s));
+    commitDraft(serializeStrategyAnalysis(p.meta, nextSections));
+  };
+
   return (
-    <div className="space-y-3" key={text.slice(0, 80)}>
+    <div className="space-y-3">
       {(meta.pair || meta.metrics) && (
         <div
           className="animate-in fade-in slide-in-from-top-1 duration-500"
@@ -380,53 +651,99 @@ export function StrategyAnalysisDisplay({ text }: { text: string }) {
 
         if (isPros) {
           const items = parseProsLines(sec.body);
+          const list = (
+            <ul className="space-y-2">
+              {items.map((item, j) => (
+                <li
+                  key={j}
+                  className="animate-in fade-in slide-in-from-left-1 fill-mode-both flex gap-2.5 rounded-lg border border-border/40 bg-background/40 px-2.5 py-2 text-[11.5px] leading-relaxed duration-400"
+                  style={{ animationDelay: `${i * 70 + j * 45}ms` }}
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+                  <span className="text-foreground/90">{highlightTerms(item)}</span>
+                </li>
+              ))}
+            </ul>
+          );
+          if (onTextChange) {
+            return (
+              <EditableSectionShell
+                key={sec.id}
+                title={sec.title}
+                icon={ListChecks}
+                accentClass={accent}
+                index={i}
+                sectionId={sec.id}
+                body={sec.body}
+                editable
+                onBodyCommit={handleSectionCommit}
+              >
+                {list}
+              </EditableSectionShell>
+            );
+          }
           return (
-            <SectionShell
-              key={sec.id}
-              title={sec.title}
-              icon={ListChecks}
-              accentClass={accent}
-              index={i}
-            >
-              <ul className="space-y-2">
-                {items.map((item, j) => (
-                  <li
-                    key={j}
-                    className="animate-in fade-in slide-in-from-left-1 fill-mode-both flex gap-2.5 rounded-lg border border-border/40 bg-background/40 px-2.5 py-2 text-[11.5px] leading-relaxed duration-400"
-                    style={{ animationDelay: `${i * 70 + j * 45}ms` }}
-                  >
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
-                    <span className="text-foreground/90">{highlightTerms(item)}</span>
-                  </li>
-                ))}
-              </ul>
+            <SectionShell key={sec.id} title={sec.title} icon={ListChecks} accentClass={accent} index={i}>
+              {list}
             </SectionShell>
           );
         }
 
         if (isCons) {
           const items = parseProsLines(sec.body);
+          const list = (
+            <ul className="space-y-2">
+              {items.map((item, j) => (
+                <li
+                  key={j}
+                  className="animate-in fade-in slide-in-from-left-1 fill-mode-both flex gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-[11.5px] leading-relaxed duration-400"
+                  style={{ animationDelay: `${i * 70 + j * 45}ms` }}
+                >
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/90 shadow-[0_0_8px_hsl(350_90%_60%/0.45)]" />
+                  <span className="text-foreground/90">{highlightTerms(item)}</span>
+                </li>
+              ))}
+            </ul>
+          );
+          if (onTextChange) {
+            return (
+              <EditableSectionShell
+                key={sec.id}
+                title={sec.title}
+                icon={AlertCircle}
+                accentClass={accent}
+                index={i}
+                sectionId={sec.id}
+                body={sec.body}
+                editable
+                onBodyCommit={handleSectionCommit}
+              >
+                {list}
+              </EditableSectionShell>
+            );
+          }
           return (
-            <SectionShell
+            <SectionShell key={sec.id} title={sec.title} icon={AlertCircle} accentClass={accent} index={i}>
+              {list}
+            </SectionShell>
+          );
+        }
+
+        if (onTextChange) {
+          return (
+            <EditableSectionShell
               key={sec.id}
               title={sec.title}
-              icon={AlertCircle}
+              icon={Icon}
               accentClass={accent}
               index={i}
+              sectionId={sec.id}
+              body={sec.body}
+              editable
+              onBodyCommit={handleSectionCommit}
             >
-              <ul className="space-y-2">
-                {items.map((item, j) => (
-                  <li
-                    key={j}
-                    className="animate-in fade-in slide-in-from-left-1 fill-mode-both flex gap-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-2.5 py-2 text-[11.5px] leading-relaxed duration-400"
-                    style={{ animationDelay: `${i * 70 + j * 45}ms` }}
-                  >
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400/90 shadow-[0_0_8px_hsl(350_90%_60%/0.45)]" />
-                    <span className="text-foreground/90">{highlightTerms(item)}</span>
-                  </li>
-                ))}
-              </ul>
-            </SectionShell>
+              <ProseBlock>{sec.body}</ProseBlock>
+            </EditableSectionShell>
           );
         }
 
