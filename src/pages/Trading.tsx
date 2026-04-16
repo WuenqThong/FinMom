@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type DragEvent } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type DragEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TrendingUp, Bot, Circle } from "lucide-react";
 
@@ -59,8 +59,14 @@ export default function TradingPage() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  /** Chỉ cuộn tới cuối vùng phân tích khi đã có nội dung — không gọi khi analyzeText còn null (tránh kéo cả trang xuống đáy lúc mở trang). */
   useEffect(() => {
-    analyzeEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!analyzeText) return;
+    analyzeEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [analyzeText]);
 
   const processFile = useCallback(async (file: File) => {
