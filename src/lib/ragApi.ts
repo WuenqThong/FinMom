@@ -207,6 +207,7 @@ function extractAnalyzeDisplayText(data: unknown): string {
 
 /**
  * Sau khi /get_analyze thành công: gọi ngầm POST /tradingautomation?inp=<ragId> (body rỗng, giống OpenAPI/curl).
+ * Không dùng AbortSignal — trình duyệt chờ tới khi server đóng kết nối (không cắt theo timeout phía client).
  */
 function fireTradingAutomation(ragId: string): void {
   const rid = ragId.trim();
@@ -218,14 +219,21 @@ function fireTradingAutomation(ragId: string): void {
     method: "POST",
     headers,
     body: "",
-  }).then(async (res) => {
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      console.warn("[tradingautomation]", res.status, t.slice(0, 200));
-    }
-  }).catch((err: unknown) => {
-    console.warn("[tradingautomation]", err);
-  });
+    signal: null,
+  })
+    .then((res) => {
+      if (res.ok) {
+        void res.text().catch(() => {});
+        return;
+      }
+      void res.text().then(
+        (t) => console.warn("[tradingautomation]", res.status, t.slice(0, 200)),
+        () => console.warn("[tradingautomation]", res.status),
+      );
+    })
+    .catch((err: unknown) => {
+      console.warn("[tradingautomation]", err);
+    });
 }
 
 /** POST /rag-upload — multipart field `file` (see Body_rag_upload_rag_upload_post in OpenAPI) */

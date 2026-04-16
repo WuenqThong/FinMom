@@ -27,6 +27,8 @@ COPY docker/docker-entrypoint.sh /docker/docker-entrypoint.sh
 RUN chmod +x /docker/docker-entrypoint.sh
 
 COPY --from=builder /app/dist /usr/share/nginx/html
+# Luôn có bản tĩnh (dev / fallback); entrypoint ghi đè bằng envsubst khi chạy container.
+COPY --from=builder /app/public/runtime-config.js /usr/share/nginx/html/runtime-config.js
 
 EXPOSE 80
 
