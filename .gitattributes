@@ -1,0 +1,2 @@
+# Shell scripts for Linux containers must use LF or shebang fails with "no such file or directory"
+*.sh text eol=lf
