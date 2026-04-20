@@ -26,4 +26,7 @@ dist-ssr
 # Environment variables
 .env
 .env.*
-!.env.example  
+!.env.example
+
+# Local font files (do not commit)
+static/Onest/
