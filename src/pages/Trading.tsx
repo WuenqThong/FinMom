@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type DragEvent } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type DragEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TrendingUp, Bot, Circle } from "lucide-react";
 
@@ -68,49 +68,14 @@ export default function TradingPage() {
     };
   }, []);
 
-  /** F5: khôi phục phân tích từ ragId đã lưu hoặc GET /get_analyze không id (bản mới nhất trên server). */
-  useEffect(() => {
-    if (!isApiConfigured()) return;
-    const ac = new AbortController();
-    void (async () => {
-      const saved = readLastRagSession();
-      if (saved?.ragId) {
-        if (ac.signal.aborted) return;
-        setStrat("processing");
-        setStratFile(saved.fileName ?? "Phiên làm việc trước");
-        setAnalyzeText(null);
-        setAnalyzeError(null);
-        try {
-          const text = await getAnalyze(saved.ragId, { signal: ac.signal, fireTradingAutomation: false });
-          if (ac.signal.aborted) return;
-          setAnalyzeText(text.trim() || "(Không có nội dung phân tích.)");
-          setStrat("loaded");
-        } catch {
-          if (ac.signal.aborted) return;
-          clearLastRagSession();
-          setStrat("idle");
-          setStratFile(null);
-        }
-        return;
-      }
-
-      try {
-        const text = await getAnalyze(null, { signal: ac.signal, fireTradingAutomation: false });
-        if (ac.signal.aborted) return;
-        const t = text.trim();
-        if (!t) return;
-        setAnalyzeText(t);
-        setStrat("loaded");
-        setStratFile("Phân tích mới nhất (server)");
-      } catch {
-        /* Backend chưa hỗ trợ GET /get_analyze không tham số id */
-      }
-    })();
-    return () => ac.abort();
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
   }, []);
 
+  /** Chỉ cuộn tới cuối vùng phân tích khi đã có nội dung — không gọi khi analyzeText còn null (tránh kéo cả trang xuống đáy lúc mở trang). */
   useEffect(() => {
-    analyzeEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!analyzeText) return;
+    analyzeEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [analyzeText]);
 
   const processFile = useCallback(async (file: File) => {
