@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vite pre-bundled deps (local cache; do not commit)
+.vite/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -29,4 +32,4 @@ dist-ssr
 !.env.example
 
 # Local font files (do not commit)
-static/Onest/
+Onest/
