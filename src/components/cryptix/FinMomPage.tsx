@@ -12,9 +12,10 @@ import stepWallet from "@/assets/step-wallet.png";
 import stepTrade from "@/assets/step-trade.png";
 import avatarAlex from "@/assets/avatar-alex.png";
 
-type SectionId = "hero" | "trading" | "how" | "testimonials" | "pricing" | "faq";
+type SectionId = "hero" | "trading" | "how" | "testimonials" | "pricing" | "faq" | "rule-engine-and-analysis";
 
 const navItems: Array<{ label: string; path: string; section: SectionId }> = [
+  { label: "Rule Engine & Analysis", path: "/rule-engine-and-analysis", section: "rule-engine-and-analysis" },
   { label: "Trading", path: "/trading", section: "trading" },
 ];
 
@@ -115,7 +116,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
       : new Set<SectionId>([focus]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background font-manrope text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-4 sm:px-8">
           <Link to="/" className="flex items-center gap-2 justify-self-start text-lg font-semibold story-link">

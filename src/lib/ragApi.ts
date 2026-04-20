@@ -1,5 +1,6 @@
 /**
- * RAG backend — FinMom OpenAPI: POST /rag-upload, GET /get_analyze?id=, POST /tradingautomation?inp= (sau get_analyze, ngầm)
+ * RAG backend — POST /rag-upload, GET /get_analyze?id=, POST /updateAnalyze?ragid=&analyze=
+ * - API /tradingautomation đã được tắt ở frontend.
  * - Dev / build: VITE_API_BASE_URL trong .env (Vite embed).
  * - Docker: có thể ghi đè lúc chạy qua /runtime-config.js (docker run -e VITE_API_BASE_URL=...).
  */
@@ -250,34 +251,11 @@ function extractAnalyzeDisplayText(data: unknown): string {
 }
 
 /**
- * Sau khi /get_analyze thành công: gọi ngầm POST /tradingautomation?inp=<ragId> (body rỗng, giống OpenAPI/curl).
- * Không dùng AbortSignal — trình duyệt chờ tới khi server đóng kết nối (không cắt theo timeout phía client).
+ * Giữ lại để tương thích ngược với flow cũ.
+ * Frontend hiện không còn gọi /tradingautomation.
  */
-function fireTradingAutomation(ragId: string): void {
-  const rid = ragId.trim();
-  const base = apiBase();
-  if (!base || !rid) return;
-  const url = `${base}/tradingautomation?inp=${encodeURIComponent(rid)}`;
-  const headers: HeadersInit = { ...apiHeaders(), Accept: "application/json" };
-  void fetch(url, {
-    method: "POST",
-    headers,
-    body: "",
-    signal: null,
-  })
-    .then((res) => {
-      if (res.ok) {
-        void res.text().catch(() => {});
-        return;
-      }
-      void res.text().then(
-        (t) => console.warn("[tradingautomation]", res.status, t.slice(0, 200)),
-        () => console.warn("[tradingautomation]", res.status),
-      );
-    })
-    .catch((err: unknown) => {
-      console.warn("[tradingautomation]", err);
-    });
+export function fireTradingAutomation(ragId: string): void {
+  void ragId;
 }
 
 /** POST /rag-upload — multipart field `file` (see Body_rag_upload_rag_upload_post in OpenAPI) */
@@ -307,11 +285,72 @@ export async function uploadRag(file: File): Promise<string> {
   return id;
 }
 
+/**
+ * POST /updateAnalyze — FinMom OpenAPI: query `ragid` + `analyze` (không dùng JSON body).
+ */
+function updateAnalyzeUrl(base: string, ragId: string, analyze: string): string {
+  const q = new URLSearchParams({
+    ragid: ragId.trim(),
+    analyze,
+  });
+  return `${base}/updateAnalyze?${q.toString()}`;
+}
+
+export async function updateAnalyze(ragId: string, analyze: string): Promise<void> {
+  const base = apiBase();
+  if (!base) {
+    throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
+  }
+  const rid = ragId.trim();
+  if (!rid) {
+    throw new Error("Thiếu rag id");
+  }
+  const url = updateAnalyzeUrl(base, rid, analyze);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { ...apiHeaders(), Accept: "application/json" },
+    body: "",
+    signal: null,
+  });
+  const data = await parseJson(res);
+  if (!res.ok) {
+    throw new Error(extractErrorPayload(data as Record<string, unknown>, res.status));
+  }
+}
+
+/**
+ * Sau khi user xác nhận rule ở step 2: chỉ POST /updateAnalyze.
+ */
+export async function confirmRuleEngineAfterEdit(ragId: string, analyze: string): Promise<void> {
+  const base = apiBase();
+  if (!base) {
+    throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
+  }
+  const rid = ragId.trim();
+  if (!rid) {
+    throw new Error("Thiếu rag id");
+  }
+  const updateUrl = updateAnalyzeUrl(base, rid, analyze);
+  const postHeaders: HeadersInit = { ...apiHeaders(), Accept: "application/json" };
+
+  const updateRes = await fetch(updateUrl, {
+    method: "POST",
+    headers: postHeaders,
+    body: "",
+    signal: null,
+  });
+
+  const updateData = await parseJson(updateRes);
+  if (!updateRes.ok) {
+    throw new Error(extractErrorPayload(updateData as Record<string, unknown>, updateRes.status));
+  }
+}
+
 export type GetAnalyzeOptions = {
   signal?: AbortSignal;
   /**
-   * Mặc định true: sau khi có phân tích, gọi POST /tradingautomation?inp=…
-   * Đặt false khi khôi phục sau F5 để tránh kích hoạt bot lặp lại.
+   * Giữ lại để tương thích ngược.
+   * Frontend hiện không còn gọi /tradingautomation.
    */
   fireTradingAutomation?: boolean;
 };
@@ -342,10 +381,6 @@ export async function getAnalyze(id?: string | null, options?: GetAnalyzeOptions
   const text = extractAnalyzeDisplayText(data);
   const record = data as Record<string, unknown>;
   const resolvedId = pickId(record) ?? (trimmed || null);
-  const shouldFire = options?.fireTradingAutomation !== false;
-  if (resolvedId && shouldFire) {
-    fireTradingAutomation(resolvedId);
-  }
   if (!trimmed && resolvedId) {
     persistLastRagSession(resolvedId, "Phân tích mới nhất (server)");
   }

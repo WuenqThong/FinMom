@@ -24,6 +24,9 @@ import {
 } from "@/components/trading/positionsTableUtils";
 import { cn } from "@/lib/utils";
 
+/** Tỷ lệ cột (fr) — các cột giãn theo 100% width, cân bằng khoảng trống bên phải. */
+const POSITIONS_GRID_TEMPLATE = "112fr 92fr 104fr 112fr 104fr 120fr 76fr 148fr 128fr" as const;
+
 type ConnState = "idle" | "connecting" | "open" | "closed" | "error";
 
 type ExchangeTab =
@@ -379,7 +382,7 @@ export function FuturesPositionRealtimePanel() {
                     className="trading-scroll h-full overflow-x-auto overflow-y-auto"
                     title="Lăn chuột: cuộn ngang · Shift + lăn: cuộn dọc (nhiều vị thế)"
                   >
-                    <div className="min-w-[1000px]">
+                    <div className="w-full min-w-[44rem] max-w-none">
                       <PositionsHeaderRow />
                       {positions.map((row, idx) => (
                         <PositionSingleRow
@@ -401,18 +404,21 @@ export function FuturesPositionRealtimePanel() {
 }
 
 function PositionsHeaderRow() {
-  const h = "shrink-0 px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3";
+  const h = "min-w-0 px-2 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3";
   return (
-    <div className="flex w-full min-w-[1000px] flex-nowrap border-b border-border/50 bg-muted/25">
-      <div className={cn(h, "w-[112px]")}>Symbol</div>
-      <div className={cn(h, "w-[92px]")}>Size</div>
-      <div className={cn(h, "w-[104px]")}>Entry Price</div>
-      <div className={cn(h, "w-[112px]")}>Break Even Price</div>
-      <div className={cn(h, "w-[104px]")}>Mark Price</div>
-      <div className={cn(h, "w-[120px]")}>Liq.Price</div>
-      <div className={cn(h, "w-[76px]")}>Margin Ratio</div>
-      <div className={cn(h, "min-w-[148px] max-w-[180px]")}>Margin</div>
-      <div className={cn(h, "w-[128px] pr-3")}>PNL(ROI)%</div>
+    <div
+      className="grid w-full border-b border-border/50 bg-muted/25"
+      style={{ gridTemplateColumns: POSITIONS_GRID_TEMPLATE }}
+    >
+      <div className={h}>Symbol</div>
+      <div className={h}>Size</div>
+      <div className={h}>Entry Price</div>
+      <div className={h}>Break Even Price</div>
+      <div className={h}>Mark Price</div>
+      <div className={h}>Liq.Price</div>
+      <div className={h}>Margin Ratio</div>
+      <div className={h}>Margin</div>
+      <div className={h}>PNL(ROI)%</div>
     </div>
   );
 }
@@ -435,13 +441,16 @@ function PositionSingleRow({
   const pnl = pnlDisplay(row);
   const roi = roiDisplay(row);
 
-  const cell = "flex shrink-0 items-center px-2 py-2.5 sm:px-3";
+  const cell = "flex min-w-0 items-center px-2 py-2.5 sm:px-3";
 
   return (
-    <div className="flex w-full min-w-[1000px] flex-nowrap border-b border-border/40 transition-colors hover:bg-muted/10">
-      <div className={cn(cell, "w-[112px] items-start")}>
-        <div className="flex gap-2">
-          <div className={`mt-0.5 h-10 w-0.5 shrink-0 rounded-full ${bar}`} aria-hidden />
+    <div
+      className="grid w-full border-b border-border/40 transition-colors hover:bg-muted/10"
+      style={{ gridTemplateColumns: POSITIONS_GRID_TEMPLATE }}
+    >
+      <div className={cn(cell, "items-center")}>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className={`h-10 w-0.5 shrink-0 self-center rounded-full ${bar}`} aria-hidden />
           <div>
             <div className="font-mono text-xs font-semibold leading-tight text-foreground">{row.symbol}</div>
             <div className="mt-0.5 flex flex-wrap gap-1">
@@ -465,7 +474,7 @@ function PositionSingleRow({
       <div
         className={cn(
           cell,
-          "w-[92px] font-mono text-[11px] tabular-nums",
+          "font-mono text-[11px] tabular-nums",
           size.positive === true
             ? "text-emerald-400"
             : size.positive === false
@@ -473,29 +482,29 @@ function PositionSingleRow({
               : "text-foreground",
         )}
       >
-        {size.line}
+        <span className="truncate">{size.line}</span>
       </div>
 
-      <div className={cn(cell, "w-[104px] font-mono text-[11px] tabular-nums text-foreground/95")}>
-        {formatPriceLike(row.entryPrice)}
+      <div className={cn(cell, "font-mono text-[11px] tabular-nums text-foreground/95")}>
+        <span className="block min-w-0 truncate">{formatPriceLike(row.entryPrice)}</span>
       </div>
-      <div className={cn(cell, "w-[112px] font-mono text-[11px] tabular-nums text-muted-foreground")}>
-        {formatPriceLike(row.breakEvenPrice)}
+      <div className={cn(cell, "font-mono text-[11px] tabular-nums text-muted-foreground")}>
+        <span className="block min-w-0 truncate">{formatPriceLike(row.breakEvenPrice)}</span>
       </div>
-      <div className={cn(cell, "w-[104px] font-mono text-[11px] tabular-nums text-muted-foreground")}>
-        {formatPriceLike(row.markPrice)}
+      <div className={cn(cell, "font-mono text-[11px] tabular-nums text-muted-foreground")}>
+        <span className="block min-w-0 truncate">{formatPriceLike(row.markPrice)}</span>
       </div>
-      <div className={cn(cell, "w-[120px] font-mono text-[11px] tabular-nums text-amber-500/95")}>
-        {formatPriceLike(row.liquidationPrice)}
+      <div className={cn(cell, "font-mono text-[11px] tabular-nums text-amber-500/95")}>
+        <span className="block min-w-0 truncate">{formatPriceLike(row.liquidationPrice)}</span>
       </div>
-      <div className={cn(cell, "w-[76px] font-mono text-[11px] tabular-nums text-foreground/90")}>
-        {marginRatioDisplay(row, accountStatus)}
+      <div className={cn(cell, "font-mono text-[11px] tabular-nums text-foreground/90")}>
+        <span className="truncate">{marginRatioDisplay(row, accountStatus)}</span>
       </div>
-      <div className={cn(cell, "min-w-[148px] max-w-[180px] text-[10px] leading-snug text-foreground/90 sm:text-[11px]")}>
-        {marginDisplay(row)}
+      <div className={cn(cell, "text-[10px] leading-snug text-foreground/90 sm:text-[11px]")}>
+        <span className="block min-w-0 break-words">{marginDisplay(row)}</span>
       </div>
 
-      <div className={cn(cell, "w-[128px] flex-col items-start justify-center gap-0.5 pr-3")}>
+      <div className={cn(cell, "flex-col items-start justify-center gap-0.5")}>
         <div
           className={cn(
             "font-mono text-[11px] font-semibold tabular-nums leading-tight",

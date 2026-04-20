@@ -8,8 +8,8 @@ RUN npm ci
 
 COPY . .
 
-# Biến Vite phải có lúc build (embed vào bundle). Override khi build: --build-arg VITE_API_BASE_URL=...
-ARG VITE_API_BASE_URL=
+# Biến Vite phải có lúc build (embed vào bundle). Override: --build-arg VITE_API_BASE_URL=...
+ARG VITE_API_BASE_URL=https://finmom-production.up.railway.app
 ARG VITE_RAG_UPLOAD_FIELD=file
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_RAG_UPLOAD_FIELD=$VITE_RAG_UPLOAD_FIELD
@@ -18,6 +18,12 @@ RUN npm run build
 
 # ─── Serve static với Nginx ─────────────────────────────────────────────────
 FROM nginx:1.27-alpine
+
+# Trùng giá trị với builder để runtime-config (envsubst) khớp bundle khi dùng --build-arg
+ARG VITE_API_BASE_URL=https://finmom-production.up.railway.app
+ARG VITE_RAG_UPLOAD_FIELD=file
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_RAG_UPLOAD_FIELD=$VITE_RAG_UPLOAD_FIELD
 
 RUN apk add --no-cache gettext
 
@@ -31,9 +37,6 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY --from=builder /app/public/runtime-config.js /usr/share/nginx/html/runtime-config.js
 
 EXPOSE 80
-
-ENV VITE_API_BASE_URL=
-ENV VITE_RAG_UPLOAD_FIELD=file
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD wget -q --spider http://127.0.0.1/ || exit 1
 

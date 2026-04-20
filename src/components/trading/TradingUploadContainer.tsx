@@ -139,8 +139,8 @@ export function TradingUploadContainer({
               <FileText className="h-3 w-3 shrink-0" /> <span className="truncate">{stratFile}</span>
             </p>
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              Chiến lược đã tải. Phân tích AI hiển thị trong khung <span className="font-medium text-primary">Analysis</span>{" "}
-              bên dưới.
+              Chiến lược đã tải. Ở bước <span className="font-medium text-primary">Chỉnh sửa Rule</span> bạn sẽ xem phân tích
+              AI và chỉnh các quy tắc.
             </p>
             <Button
               size="sm"

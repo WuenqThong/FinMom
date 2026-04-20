@@ -4,9 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # URL backend (vd: https://xxxx.ngrok-free.app) — truyền khi build để app gọi API đúng
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        # Mặc định FinMom production; ghi đè bằng VITE_API_BASE_URL trong .env nếu cần
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://finmom-production.up.railway.app}
         VITE_RAG_UPLOAD_FIELD: ${VITE_RAG_UPLOAD_FIELD:-file}
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://finmom-production.up.railway.app}
+      VITE_RAG_UPLOAD_FIELD: ${VITE_RAG_UPLOAD_FIELD:-file}
     ports:
       - "${WEB_PORT:-8080}:80"
     restart: unless-stopped

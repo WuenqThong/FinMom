@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -110,7 +111,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Manrope", sans-serif;
+    font-family: "Onest", ui-sans-serif, system-ui, sans-serif;
     background-image: radial-gradient(circle at 50% -10%, hsl(var(--primary) / 0.13), transparent 35%);
     min-height: 100vh;
   }
@@ -182,7 +183,7 @@ All colors MUST be HSL.
    */
   .trading-root {
     zoom: 1.35;
-    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Onest", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     font-variant-numeric: tabular-nums;
     background-color: hsl(var(--background));

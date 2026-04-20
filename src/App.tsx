@@ -4,12 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import Index from "./pages/Index.tsx";
 import TradingPage from "./pages/Trading.tsx";
 import HowItWorksPage from "./pages/HowItWorks.tsx";
-import TestimonialsPage from "./pages/Testimonials.tsx";
 import PricingPage from "./pages/Pricing.tsx";
 import FaqPage from "./pages/Faq.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import LoginPage from "./pages/Login.tsx";
 import RegisterPage from "./pages/Register.tsx";
+import RuleEngineAndAnalysisPage from "./pages/RuleEngineAndAnalysisPage.tsx";
 
 const App = () => (
   <>
@@ -19,9 +19,8 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/trading" element={<TradingPage />} />
-        <Route path="/Trading" element={<TradingPage />} />
+        <Route path="/rule-engine-and-analysis" element={<RuleEngineAndAnalysisPage />} />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
-        <Route path="/testimonials" element={<TestimonialsPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/faq" element={<FaqPage />} />
         <Route path="/login" element={<LoginPage />} />
