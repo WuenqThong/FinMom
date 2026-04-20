@@ -12,46 +12,28 @@ import {
   Bot,
   Shield,
   Activity,
+  User,
+  Circle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { StrategyAnalysisDisplay } from "@/components/trading/StrategyAnalysisDisplay";
 import { TradingUploadContainer } from "@/components/trading/TradingUploadContainer";
 import { TradingAnalysisContainer } from "@/components/trading/TradingAnalysisContainer";
-import { useRagPdfStrategy } from "@/hooks/useRagPdfStrategy";
+import { persistRuleEngineAnalyzeDraft, useRagPdfStrategy } from "@/hooks/useRagPdfStrategy";
 import { useToast } from "@/hooks/use-toast";
 import { confirmRuleEngineAfterEdit, readLastRagSession } from "@/lib/ragApi";
+import {
+  clearRuleEngineUiSession,
+  persistRuleEngineUiSession,
+  readRuleEngineUiSession,
+  type RuleEngineConfirmState as ConfirmState,
+  type RuleEngineStep as Step,
+  type RuleEngineUiSession,
+} from "@/lib/ruleEngineUiSession";
 
-type Step = 1 | 2 | 3;
-type ConfirmState = "editing" | "confirming" | "success";
+const STEP_TRANSITION_MS = 2000;
 
-function StepIndicator({ step, current }: { step: Step; current: Step }) {
-  const isDone = step < current;
-  const isActive = step === current;
-  return (
-    <div
-      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all duration-300 ${
-        isDone
-          ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
-          : isActive
-            ? "border-primary/40 bg-primary/15 text-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.1)]"
-            : "border-border/50 bg-card text-muted-foreground"
-      }`}
-    >
-      {isDone ? <CheckCircle2 className="h-4 w-4" /> : step}
-    </div>
-  );
-}
-
-function StepConnector({ done, className = "" }: { done: boolean; className?: string }) {
-  return (
-    <div
-      className={`h-px min-h-px min-w-[1.5rem] flex-1 transition-all duration-500 sm:min-w-[2.5rem] ${className} ${
-        done ? "bg-emerald-500/40" : "bg-border/50"
-      }`}
-    />
-  );
-}
+type CompletingStep = null | 1 | 2;
 
 const stepActionPill =
   "h-9 rounded-full border border-border/60 bg-background/80 px-4 text-xs font-medium shadow-sm transition-colors hover:border-primary/35 hover:bg-background";
@@ -77,23 +59,78 @@ export default function RuleEngineAnalysisPage() {
     resetStrategy,
   } = useRagPdfStrategy();
 
-  const [step, setStep] = useState<Step>(1);
-  const [confirmState, setConfirmState] = useState<ConfirmState>("editing");
-  const [finalAnalysis, setFinalAnalysis] = useState<string | null>(null);
+  const initialUiRagId = ragId?.trim() || readLastRagSession()?.ragId?.trim() || null;
+  const initialUi = readRuleEngineUiSession(initialUiRagId);
+  const [step, setStep] = useState<Step>(() => initialUi?.step ?? 1);
+  const [confirmState, setConfirmState] = useState<ConfirmState>(() => initialUi?.confirmState ?? "editing");
+  const [finalAnalysis, setFinalAnalysis] = useState<string | null>(() => initialUi?.finalAnalysis ?? null);
+  const [completingStep, setCompletingStep] = useState<CompletingStep>(null);
 
   const prevStratRef = useRef(strat);
   useEffect(() => {
     const prev = prevStratRef.current;
     prevStratRef.current = strat;
     if (prev !== "processing" || strat !== "loaded" || step !== 1) return;
-    setStep(2);
+    setCompletingStep(1);
   }, [strat, step, analyzeText]);
 
-  const resetAll = () => {
-    resetStrategy();
+  useEffect(() => {
+    if (completingStep !== 1) return;
+    const t = window.setTimeout(() => {
+      setStep(2);
+      setCompletingStep(null);
+    }, STEP_TRANSITION_MS);
+    return () => window.clearTimeout(t);
+  }, [completingStep]);
+
+  useEffect(() => {
+    if (completingStep !== 2) return;
+    const t = window.setTimeout(() => {
+      setStep(3);
+      setConfirmState("success");
+      setCompletingStep(null);
+    }, STEP_TRANSITION_MS);
+    return () => window.clearTimeout(t);
+  }, [completingStep]);
+
+  useEffect(() => {
+    const rid = ragId?.trim() || readLastRagSession()?.ragId?.trim() || null;
+    if (!rid) return;
+    const saved = readRuleEngineUiSession(rid);
+    if (saved) {
+      setStep(saved.step);
+      setConfirmState(saved.confirmState);
+      setFinalAnalysis(saved.finalAnalysis);
+      return;
+    }
     setStep(1);
     setConfirmState("editing");
     setFinalAnalysis(null);
+  }, [ragId]);
+
+  useEffect(() => {
+    const rid = ragId?.trim();
+    if (!rid) return;
+    const payload: RuleEngineUiSession = { ragId: rid, step, confirmState, finalAnalysis };
+    persistRuleEngineUiSession(payload);
+  }, [ragId, step, confirmState, finalAnalysis]);
+
+  useEffect(() => {
+    const rid = ragId?.trim();
+    if (!rid || step !== 2 || strat !== "loaded") return;
+    const t = window.setTimeout(() => {
+      persistRuleEngineAnalyzeDraft(rid, analyzeText ?? "");
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [analyzeText, ragId, step, strat]);
+
+  const resetAll = () => {
+    resetStrategy();
+    clearRuleEngineUiSession();
+    setStep(1);
+    setConfirmState("editing");
+    setFinalAnalysis(null);
+    setCompletingStep(null);
   };
 
   const confirmRules = async () => {
@@ -125,11 +162,14 @@ export default function RuleEngineAnalysisPage() {
           "Quy tắc vào lệnh 5 nến · Thoát 3 nến · R:R 1:2.",
       );
     }
-    setConfirmState("success");
-    setStep(3);
+    setConfirmState("editing");
+    setCompletingStep(2);
   };
 
   const stepLabels = ["Upload PDF", "Chỉnh sửa Rule", "Kết quả"];
+  const indicatorStep = completingStep ?? step;
+  const showStepCompleteTick = completingStep !== null;
+  const isStepTransitioning = completingStep !== null;
 
   return (
     <div className="trading-root flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-background text-foreground">
@@ -167,53 +207,64 @@ export default function RuleEngineAnalysisPage() {
                 <Bot className="h-3.5 w-3.5 shrink-0" />
                 Trading
               </NavLink>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive ? "bg-background/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`
+                }
+              >
+                <User className="h-3.5 w-3.5 shrink-0" />
+                Profile
+              </NavLink>
             </div>
           </nav>
 
-          <div className="flex justify-end gap-2 justify-self-end">
-            <Link to="/trading">
-              <Button variant="outline" size="sm" className="h-7 rounded-full border-border/50 px-3 text-xs">
-                ← Lệnh Bot
-              </Button>
-            </Link>
+          <div className="flex items-center justify-end gap-2 justify-self-end">
+            <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 sm:flex">
+              <Circle className="h-1.5 w-1.5 animate-pulse fill-emerald-400 text-emerald-400" />
+              <span className="text-[11px] font-semibold text-emerald-400">Bot Online</span>
+            </div>
+            <Button variant="outline" size="sm" className="h-7 rounded-full border-border/50 px-3 text-xs" onClick={() => navigate("/login")}>
+              Đăng xuất
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="shrink-0 px-3 pt-4 pb-2">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-center gap-2 sm:justify-between">
-            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 sm:w-28">
-              <StepIndicator step={1} current={step} />
-              <span
-                className={`text-center text-[10px] font-semibold uppercase tracking-widest ${
-                  step === 1 ? "text-primary" : step > 1 ? "text-emerald-400" : "text-muted-foreground"
+          <div className="mx-auto flex w-full max-w-5xl justify-center">
+            <div
+              key={`${indicatorStep}-${showStepCompleteTick ? "t" : "n"}`}
+              className="flex flex-col items-center gap-1 rule-engine-step-enter"
+            >
+              <div
+                className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold transition-colors duration-300 ${
+                  showStepCompleteTick
+                    ? "border-emerald-500/55 bg-emerald-500/15 shadow-[0_0_28px_-6px_hsl(160_84%_39%/0.55)]"
+                    : "border-primary/45 bg-primary/12 text-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.12)]"
                 }`}
               >
-                {stepLabels[0]}
-              </span>
-            </div>
-            <StepConnector done={step > 1} className="mb-5 max-sm:hidden" />
-            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 sm:w-28">
-              <StepIndicator step={2} current={step} />
+                {showStepCompleteTick ? (
+                  <CheckCircle2 className="rule-engine-step-tick-pop h-5 w-5 text-emerald-400" />
+                ) : (
+                  indicatorStep
+                )}
+              </div>
               <span
-                className={`text-center text-[10px] font-semibold uppercase tracking-widest ${
-                  step === 2 ? "text-primary" : step > 2 ? "text-emerald-400" : "text-muted-foreground"
+                className={`max-w-[16rem] text-center text-[10px] font-semibold uppercase tracking-widest ${
+                  showStepCompleteTick ? "text-emerald-400" : "text-primary"
                 }`}
               >
-                {stepLabels[1]}
+                {stepLabels[indicatorStep - 1]}
               </span>
-            </div>
-            <StepConnector done={step > 2} className="mb-5 max-sm:hidden" />
-            <div className="flex w-24 shrink-0 flex-col items-center gap-1.5 sm:w-28">
-              <StepIndicator step={3} current={step} />
-              <span
-                className={`text-center text-[10px] font-semibold uppercase tracking-widest ${
-                  step === 3 ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                {stepLabels[2]}
-              </span>
+              {isStepTransitioning && (
+                <span className="text-[10px] font-medium tabular-nums text-muted-foreground">
+                  Đang chuyển bước tiếp theo…
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -281,19 +332,29 @@ export default function RuleEngineAnalysisPage() {
                 </section>
 
                 <div className="flex shrink-0 flex-col gap-3 border-t border-border/40 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                  <button type="button" className={`${stepActionPill} text-muted-foreground`} onClick={resetAll}>
+                  <button
+                    type="button"
+                    className={`${stepActionPill} text-muted-foreground disabled:pointer-events-none disabled:opacity-45`}
+                    onClick={resetAll}
+                    disabled={isStepTransitioning}
+                  >
                     <X className="mr-1.5 inline h-3.5 w-3.5 align-text-bottom" />
                     Hủy bỏ
                   </button>
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button type="button" className={stepActionPill} onClick={() => setStep(1)}>
+                    <button
+                      type="button"
+                      className={`${stepActionPill} disabled:pointer-events-none disabled:opacity-45`}
+                      onClick={() => setStep(1)}
+                      disabled={isStepTransitioning}
+                    >
                       ← Quay lại
                     </button>
                     <Button
                       size="sm"
                       className="h-9 rounded-full px-5 text-xs font-semibold shadow-sm"
                       onClick={() => void confirmRules()}
-                      disabled={confirmState === "confirming"}
+                      disabled={confirmState === "confirming" || completingStep !== null}
                     >
                       {confirmState === "confirming" ? (
                         <>
@@ -345,30 +406,17 @@ export default function RuleEngineAnalysisPage() {
                       <div>
                         <p className="text-sm font-bold text-emerald-400">Rule đã được xác nhận &amp; kích hoạt!</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          Bot đang chạy theo chiến lược đã phân tích. Theo dõi tại tab{" "}
-                          <span className="font-medium text-primary">Lệnh Bot</span>.
+                          Bot đang chạy theo chiến lược đã phân tích. Theo dõi lệnh tại{" "}
+                          <span className="font-medium text-primary">Trading</span>
+                          {". "}
+                          Xem phân tích AI đầy đủ trong{" "}
+                          <Link to="/profile?tab=rules" className="font-medium text-primary underline-offset-2 hover:underline">
+                            Profile → Rules
+                          </Link>
+                          .
                         </p>
                       </div>
                     </div>
-
-                    {finalAnalysis && (
-                      <Card className="glass-panel relative overflow-hidden border-primary/15 shadow-[0_0_40px_-12px_hsl(var(--primary)/0.2)]">
-                        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
-                        <CardContent className="flex flex-col gap-3 p-5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/25 bg-primary/15">
-                              <Zap className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                              Phân tích AI cuối
-                            </p>
-                          </div>
-                          <div className="max-h-[min(60vh,520px)] min-h-[200px] overflow-y-auto rounded-lg border border-border/50 bg-card p-3 trading-scroll">
-                            <StrategyAnalysisDisplay text={finalAnalysis} />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
 
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                       <Button

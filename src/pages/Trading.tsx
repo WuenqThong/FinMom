@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { TrendingUp, Bot, BookOpen, Circle } from "lucide-react";
+import { TrendingUp, Bot, BookOpen, Circle, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -101,6 +101,17 @@ export default function TradingPage() {
               >
                 <Bot className="h-3.5 w-3.5 shrink-0" />
                 Trading
+              </NavLink>
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    isActive ? "bg-background/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`
+                }
+              >
+                <User className="h-3.5 w-3.5 shrink-0" />
+                Profile
               </NavLink>
             </div>
           </nav>

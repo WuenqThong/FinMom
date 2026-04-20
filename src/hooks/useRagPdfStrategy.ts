@@ -5,16 +5,72 @@ import {
   uploadRag,
   persistLastRagSession,
   clearLastRagSession,
+  readLastRagSession,
 } from "@/lib/ragApi";
 import type { StrategyState } from "@/components/trading/TradingUploadContainer";
+
+const ANALYZE_DRAFT_KEY = "finmom_rule_engine_analyze_draft_v1";
+
+function readAnalyzeDraft(ragId: string): string | null {
+  try {
+    const raw = sessionStorage.getItem(ANALYZE_DRAFT_KEY);
+    if (!raw?.trim()) return null;
+    const o = JSON.parse(raw) as { ragId?: string; text?: string };
+    if (o.ragId !== ragId || typeof o.text !== "string") return null;
+    return o.text;
+  } catch {
+    return null;
+  }
+}
+
+export function persistRuleEngineAnalyzeDraft(ragId: string, text: string): void {
+  try {
+    const id = ragId.trim();
+    if (!id) return;
+    sessionStorage.setItem(ANALYZE_DRAFT_KEY, JSON.stringify({ ragId: id, text }));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearRuleEngineAnalyzeDraft(): void {
+  try {
+    sessionStorage.removeItem(ANALYZE_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function initialSessionState(): {
+  ragId: string | null;
+  stratFile: string | null;
+  strat: StrategyState;
+} {
+  if (typeof window === "undefined") {
+    return { ragId: null, stratFile: null, strat: "idle" };
+  }
+  try {
+    if (!isApiConfigured()) return { ragId: null, stratFile: null, strat: "idle" };
+    const s = readLastRagSession();
+    if (!s?.ragId) return { ragId: null, stratFile: null, strat: "idle" };
+    return {
+      ragId: s.ragId,
+      stratFile: s.fileName ?? null,
+      strat: "processing",
+    };
+  } catch {
+    return { ragId: null, stratFile: null, strat: "idle" };
+  }
+}
 
 /**
  * Upload PDF → /rag-upload → GET /get_analyze (không gọi /tradingautomation cho tới khi xác nhận rule).
  */
 export function useRagPdfStrategy() {
-  const [ragId, setRagId] = useState<string | null>(null);
-  const [strat, setStrat] = useState<StrategyState>("idle");
-  const [stratFile, setStratFile] = useState<string | null>(null);
+  const init = initialSessionState();
+  const [ragId, setRagId] = useState<string | null>(() => init.ragId);
+  const [strat, setStrat] = useState<StrategyState>(() => init.strat);
+  const [stratFile, setStratFile] = useState<string | null>(() => init.stratFile);
   const [isDrag, setIsDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -26,6 +82,43 @@ export function useRagPdfStrategy() {
     if (!analyzeText) return;
     analyzeEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [analyzeText]);
+
+  useEffect(() => {
+    const s = readLastRagSession();
+    if (!s?.ragId?.trim() || !isApiConfigured()) return;
+
+    let cancelled = false;
+    const rid = s.ragId.trim();
+
+    setStrat("processing");
+    setAnalyzeError(null);
+    getAnalyze(rid, { fireTradingAutomation: false })
+      .then((text) => {
+        if (cancelled) return;
+        const draft = readAnalyzeDraft(rid);
+        const fromServer = text.trim() || "(No analysis text.)";
+        const resolved = draft !== null ? draft : fromServer;
+        setAnalyzeText(resolved);
+        setAnalyzeError(null);
+        setRagId(rid);
+        setStratFile(s.fileName ?? null);
+        setStrat("loaded");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        clearLastRagSession();
+        clearRuleEngineAnalyzeDraft();
+        setRagId(null);
+        setStrat("idle");
+        setStratFile(null);
+        setAnalyzeText(null);
+        setAnalyzeError(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const processFile = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -65,6 +158,7 @@ export function useRagPdfStrategy() {
 
   const resetStrategy = useCallback(() => {
     clearLastRagSession();
+    clearRuleEngineAnalyzeDraft();
     setRagId(null);
     setStrat("idle");
     setStratFile(null);

@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound.tsx";
 import LoginPage from "./pages/Login.tsx";
 import RegisterPage from "./pages/Register.tsx";
 import RuleEngineAndAnalysisPage from "./pages/RuleEngineAndAnalysisPage.tsx";
+import ProfilePage from "./pages/Profile.tsx";
 
 const App = () => (
   <>
@@ -20,6 +21,7 @@ const App = () => (
         <Route path="/" element={<Index />} />
         <Route path="/trading" element={<TradingPage />} />
         <Route path="/rule-engine-and-analysis" element={<RuleEngineAndAnalysisPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/how-it-works" element={<HowItWorksPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/faq" element={<FaqPage />} />
