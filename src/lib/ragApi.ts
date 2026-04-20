@@ -70,12 +70,56 @@ function pickId(data: Record<string, unknown>): string | null {
     data.rag_id,
     data.document_id,
     data.ragId,
+    data.rag_upload_id,
     (data.data as Record<string, unknown> | undefined)?.id,
+    (data.result as Record<string, unknown> | undefined)?.id,
   ];
   for (const c of candidates) {
     if (c !== undefined && c !== null && String(c).length > 0) return String(c);
   }
   return null;
+}
+
+/** Lưu phiên RAG cuối (F5 vẫn gọi lại GET /get_analyze?id=…). */
+const LAST_RAG_SESSION_KEY = "finmom_last_rag_session";
+
+export type LastRagSession = { ragId: string; fileName?: string | null };
+
+export function persistLastRagSession(ragId: string, fileName?: string | null): void {
+  try {
+    const id = ragId.trim();
+    if (!id) return;
+    const payload: LastRagSession = { ragId: id, fileName: fileName ?? undefined };
+    localStorage.setItem(LAST_RAG_SESSION_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function readLastRagSession(): LastRagSession | null {
+  try {
+    const raw = localStorage.getItem(LAST_RAG_SESSION_KEY);
+    if (!raw?.trim()) return null;
+    const o = JSON.parse(raw) as unknown;
+    if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+    const ragId = typeof (o as LastRagSession).ragId === "string" ? (o as LastRagSession).ragId.trim() : "";
+    if (!ragId) return null;
+    const fileName = (o as LastRagSession).fileName;
+    return {
+      ragId,
+      fileName: typeof fileName === "string" ? fileName : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearLastRagSession(): void {
+  try {
+    localStorage.removeItem(LAST_RAG_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 function pickAnalyzeText(data: Record<string, unknown>): string {
@@ -263,23 +307,48 @@ export async function uploadRag(file: File): Promise<string> {
   return id;
 }
 
-/** GET /get_analyze?id=… — returns AI analysis text */
-export async function getAnalyze(id: string): Promise<string> {
+export type GetAnalyzeOptions = {
+  signal?: AbortSignal;
+  /**
+   * Mặc định true: sau khi có phân tích, gọi POST /tradingautomation?inp=…
+   * Đặt false khi khôi phục sau F5 để tránh kích hoạt bot lặp lại.
+   */
+  fireTradingAutomation?: boolean;
+};
+
+/**
+ * GET /get_analyze
+ * - Có `id`: ?id=…
+ * - Không có `id` (undefined / null / ""): gọi không query — backend có thể trả bản phân tích mới nhất (cần API hỗ trợ).
+ */
+export async function getAnalyze(id?: string | null, options?: GetAnalyzeOptions): Promise<string> {
   const base = apiBase();
   if (!base) {
     throw new Error("Chưa cấu hình VITE_API_BASE_URL trong .env");
   }
-  const url = `${base}/get_analyze?id=${encodeURIComponent(id)}`;
+  const trimmed = id !== undefined && id !== null ? String(id).trim() : "";
+  const url = trimmed
+    ? `${base}/get_analyze?id=${encodeURIComponent(trimmed)}`
+    : `${base}/get_analyze`;
   const res = await fetch(url, {
     method: "GET",
     headers: apiHeaders(),
+    signal: options?.signal,
   });
   const data = await parseJson(res);
   if (!res.ok) {
     throw new Error(extractErrorPayload(data as Record<string, unknown>, res.status));
   }
   const text = extractAnalyzeDisplayText(data);
-  fireTradingAutomation(id);
+  const record = data as Record<string, unknown>;
+  const resolvedId = pickId(record) ?? (trimmed || null);
+  const shouldFire = options?.fireTradingAutomation !== false;
+  if (resolvedId && shouldFire) {
+    fireTradingAutomation(resolvedId);
+  }
+  if (!trimmed && resolvedId) {
+    persistLastRagSession(resolvedId, "Phân tích mới nhất (server)");
+  }
   return text;
 }
 

@@ -10,7 +10,16 @@ import {
   type RightTab,
 } from "@/components/trading/TradingMainContainer";
 import { TradingUploadContainer, type StrategyState } from "@/components/trading/TradingUploadContainer";
-import { getAnalyze, isApiConfigured, uploadRag, fetchBotHistory, type BotHistoryItem } from "@/lib/ragApi";
+import {
+  getAnalyze,
+  isApiConfigured,
+  uploadRag,
+  fetchBotHistory,
+  persistLastRagSession,
+  readLastRagSession,
+  clearLastRagSession,
+  type BotHistoryItem,
+} from "@/lib/ragApi";
 
 export default function TradingPage() {
   const navigate = useNavigate();
@@ -85,6 +94,7 @@ export default function TradingPage() {
     try {
       const id = await uploadRag(file);
       const text = await getAnalyze(id);
+      persistLastRagSession(id, file.name);
       setAnalyzeText(text.trim() || "(Không có nội dung phân tích.)");
       setStrat("loaded");
     } catch (err) {
@@ -103,6 +113,7 @@ export default function TradingPage() {
   };
 
   const resetStrategy = () => {
+    clearLastRagSession();
     setStrat("idle");
     setStratFile(null);
     setAnalyzeText(null);
@@ -181,6 +192,7 @@ export default function TradingPage() {
             analyzeText={analyzeText}
             analyzeError={analyzeError}
             analyzeEndRef={analyzeEndRef}
+            onAnalyzeTextChange={(next) => setAnalyzeText(next)}
           />
         </section>
 

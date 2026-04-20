@@ -11,6 +11,8 @@ export interface TradingAnalysisContainerProps {
   analyzeText: string | null;
   analyzeError: string | null;
   analyzeEndRef: RefObject<HTMLDivElement | null>;
+  /** Cập nhật nội dung phân tích khi người dùng sửa tay trong các khối (StrategyAnalysisDisplay). */
+  onAnalyzeTextChange?: (next: string) => void;
 }
 
 /** Container 2 — Analysis (đọc chiến lược từ PDF). */
@@ -19,6 +21,7 @@ export function TradingAnalysisContainer({
   analyzeText,
   analyzeError,
   analyzeEndRef,
+  onAnalyzeTextChange,
 }: TradingAnalysisContainerProps) {
   return (
     <Card className="glass-panel relative flex min-h-[220px] flex-1 flex-col overflow-hidden border-primary/15 shadow-[0_0_40px_-12px_hsl(var(--primary)/0.25)] sm:min-h-[260px] lg:min-h-0">
@@ -74,7 +77,9 @@ export function TradingAnalysisContainer({
             </div>
           )}
 
-          {strat !== "processing" && analyzeText && <StrategyAnalysisDisplay text={analyzeText} />}
+          {strat !== "processing" && analyzeText && (
+            <StrategyAnalysisDisplay text={analyzeText} onTextChange={onAnalyzeTextChange} />
+          )}
           <div ref={analyzeEndRef} />
         </div>
       </CardContent>
