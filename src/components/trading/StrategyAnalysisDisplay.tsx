@@ -266,7 +266,7 @@ const editTextareaClass =
 function parseProsLines(body: string): string[] {
   return body
     .split("\n")
-    .map((l) => l.replace(/^\s*[•\-\*]\s*/, "").trim())
+    .map((l) => l.replace(/^\s*[•\-*]\s*/, "").trim())
     .filter(Boolean);
 }
 
@@ -583,11 +583,11 @@ export function StrategyAnalysisDisplay({ text, onTextChange }: StrategyAnalysis
   };
 
   const jsonPayload = useMemo(() => tryParseStrategyJson(draft), [draft]);
+  const parsed = useMemo(() => parseStrategyAnalysis(draft), [draft]);
+
   if (jsonPayload) {
     return <StrategyJsonAnalysisView data={jsonPayload} onTextChange={onTextChange ? commitDraft : undefined} />;
   }
-
-  const parsed = useMemo(() => parseStrategyAnalysis(draft), [draft]);
 
   if (parsed.rawFallback) {
     return (
