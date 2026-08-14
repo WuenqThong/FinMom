@@ -9,6 +9,35 @@
 
 export const DEFAULT_BINANCE_FUTURES_WS = "wss://testnet.binancefuture.com/ws-fapi/v1";
 
+/** REST origin (https) tương ứng WebSocket fapi — dùng gọi `/fapi/v1/time`. */
+export function futuresHttpOriginFromWsUrl(wsUrl: string): string {
+  try {
+    const u = new URL(wsUrl);
+    const protocol =
+      u.protocol === "wss:" ? "https:" : u.protocol === "ws:" ? "http:" : u.protocol;
+    return `${protocol}//${u.host}`;
+  } catch {
+    return "https://testnet.binancefuture.com";
+  }
+}
+
+/**
+ * Offset (serverTime − localNow) tính bằng ms. Cộng vào `Date.now()` khi ký request.
+ * Tránh lỗi Binance: "Timestamp for this request was … ahead/behind the server's time."
+ */
+export async function fetchBinanceFuturesTimeOffsetMs(restOrigin: string): Promise<number> {
+  const base = restOrigin.replace(/\/$/, "");
+  const res = await fetch(`${base}/fapi/v1/time`);
+  if (!res.ok) {
+    throw new Error(`fapi/v1/time HTTP ${res.status}`);
+  }
+  const body = (await res.json()) as { serverTime?: number };
+  if (typeof body.serverTime !== "number" || !Number.isFinite(body.serverTime)) {
+    throw new Error("fapi/v1/time: missing serverTime");
+  }
+  return body.serverTime - Date.now();
+}
+
 export type FuturesPositionRow = {
   symbol: string;
   positionSide: string;

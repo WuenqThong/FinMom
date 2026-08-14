@@ -4,6 +4,8 @@ import { Activity, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   DEFAULT_BINANCE_FUTURES_WS,
+  fetchBinanceFuturesTimeOffsetMs,
+  futuresHttpOriginFromWsUrl,
   type AccountStatusSnapshot,
   type FuturesPositionRow,
   parseAccountStatusResponse,
@@ -136,14 +138,35 @@ export function FuturesPositionRealtimePanel() {
     setConn("connecting");
     setLastError(null);
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    pendingWsKindRef.current.clear();
+    const restOrigin = futuresHttpOriginFromWsUrl(wsUrl);
+    let timeOffsetMs = 0;
+    const refreshTimeOffset = async () => {
+      try {
+        timeOffsetMs = await fetchBinanceFuturesTimeOffsetMs(restOrigin);
+      } catch (e) {
+        if (import.meta.env.DEV) {
+          console.warn("[Binance] Đồng bộ fapi/v1/time thất bại, dùng đồng hồ máy.", e);
+        }
+      }
+    };
+
+    const timestampForSign = () => Date.now() + timeOffsetMs;
+
+    let cancelled = false;
+    let ws: WebSocket | null = null;
+
+    const start = async () => {
+      await refreshTimeOffset();
+      if (cancelled || closedRef.current) return;
+
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      pendingWsKindRef.current.clear();
 
     const sendPosition = async () => {
-      if (closedRef.current || ws.readyState !== WebSocket.OPEN) return;
+      if (closedRef.current || !ws || ws.readyState !== WebSocket.OPEN) return;
       try {
-        const timestamp = Date.now();
+        const timestamp = timestampForSign();
         const params = await signPositionRequestParams({
           apiKey,
           apiSecret,
@@ -166,9 +189,9 @@ export function FuturesPositionRealtimePanel() {
     };
 
     const sendAccountStatus = async () => {
-      if (closedRef.current || ws.readyState !== WebSocket.OPEN) return;
+      if (closedRef.current || !ws || ws.readyState !== WebSocket.OPEN) return;
       try {
-        const timestamp = Date.now();
+        const timestamp = timestampForSign();
         const params = await signAccountStatusParams({
           apiKey,
           apiSecret,
@@ -196,10 +219,14 @@ export function FuturesPositionRealtimePanel() {
 
     ws.onopen = () => {
       if (closedRef.current) return;
-      setConn("open");
-      void pollBoth();
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => void pollBoth(), pollMs);
+      void (async () => {
+        await refreshTimeOffset();
+        if (closedRef.current || !ws || ws.readyState !== WebSocket.OPEN) return;
+        setConn("open");
+        void pollBoth();
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => void pollBoth(), pollMs);
+      })();
     };
 
     ws.onmessage = (ev) => {
@@ -215,6 +242,7 @@ export function FuturesPositionRealtimePanel() {
           if (kind === "position") {
             const { rows, errorMessage } = parsePositionResponse(data);
             if (errorMessage) {
+              if (/timestamp|ahead of|behind.*server/i.test(errorMessage)) void refreshTimeOffset();
               setLastError(errorMessage);
               return;
             }
@@ -226,6 +254,7 @@ export function FuturesPositionRealtimePanel() {
           }
           const { snapshot, errorMessage } = parseAccountStatusResponse(data);
           if (errorMessage) {
+            if (/timestamp|ahead of|behind.*server/i.test(errorMessage)) void refreshTimeOffset();
             setLastError(errorMessage);
             return;
           }
@@ -246,6 +275,7 @@ export function FuturesPositionRealtimePanel() {
           ) {
             const { snapshot, errorMessage } = parseAccountStatusResponse(data);
             if (errorMessage) {
+              if (/timestamp|ahead of|behind.*server/i.test(errorMessage)) void refreshTimeOffset();
               setLastError(errorMessage);
               return;
             }
@@ -259,6 +289,7 @@ export function FuturesPositionRealtimePanel() {
 
         const { rows, errorMessage } = parsePositionResponse(data);
         if (errorMessage) {
+          if (/timestamp|ahead of|behind.*server/i.test(errorMessage)) void refreshTimeOffset();
           setLastError(errorMessage);
           return;
         }
@@ -280,13 +311,18 @@ export function FuturesPositionRealtimePanel() {
       setConn("closed");
     };
 
+    };
+
+    void start();
+
     return () => {
+      cancelled = true;
       closedRef.current = true;
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      ws.close();
+      ws?.close();
       wsRef.current = null;
     };
   }, [configured, apiKey, apiSecret, wsUrl, envSymbol, pollMs]);

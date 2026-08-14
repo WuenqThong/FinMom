@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { LandingFooter } from "@/components/layout/LandingFooter";
 
 const passwordStrengthLabel = (password: string) => {
   if (!password) return null;
@@ -57,12 +58,13 @@ export default function RegisterPage() {
   const strength = passwordStrengthLabel(form.password);
 
   return (
-    <div className="auth-page-bg min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="auth-page-bg flex min-h-screen flex-col">
       <div className="auth-glow-1" />
       <div className="auth-glow-2" />
 
-      <div className="relative z-10 w-full max-w-md">
-        <Card className="glass-panel auth-card">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <Card className="glass-panel auth-card">
           <CardContent className="p-8">
             <div className="mb-7 text-center">
               <h1 className="text-2xl font-bold tracking-tight">Tạo tài khoản</h1>
@@ -196,11 +198,10 @@ export default function RegisterPage() {
             </p>
           </CardContent>
         </Card>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2025 FinWise
-        </p>
+        </div>
       </div>
+
+      <LandingFooter className="relative z-10 mt-auto" />
     </div>
   );
 }
