@@ -13,9 +13,8 @@ Tài liệu tổng hợp **UI/UX, design system, theme và pattern triển khai*
 | Components | shadcn/ui (`components.json`, base **slate**, `cssVariables: true`) | Variant qua `class-variance-authority`, merge class qua `cn()` |
 | Primitives | Radix (dialog, menu, accordion, …) | Hỗ trợ focus trap, keyboard, WAI-ARIA cơ bản |
 | Icons | `lucide-react` | Kích thước thường `h-4 w-4`–`h-5 w-5`, đồng bộ với button `[&_svg]` |
-| Charts | `recharts` + `src/components/ui/chart.tsx` | Map màu series qua `--color-*`, hỗ trợ selector `.dark` |
 | Toasts | `@radix-ui/react-toast` + `sonner` | Radix toaster + Sonner (Sonner dùng `next-themes` — xem mục 8) |
-| Routing | `react-router-dom` | `NavLink` bọc `RouterNavLink` + `cn` cho active state |
+| Routing | `react-router-dom` | Route-level pages và navigation components dùng trực tiếp primitives của React Router |
 
 **Luồng trang chính:** Landing và marketing dùng `src/components/cryptix/FinMomPage.tsx` (brand **FinMom**). Trang trading và workspace dùng cùng nhận diện **FinMom** (`FinMomWordmark` / `BrandLogoLink`) và lớp `.trading-root`. Đăng nhập/đăng ký dùng lớp tiền tố `auth-*`.
 
@@ -153,11 +152,6 @@ Dùng cho: thẻ benefit, pricing, FAQ wrapper, ảnh hero, CTA cuối trang, ca
 - **Radix** `Toaster` + hook `use-toast` (trang login/register, rule engine).
 - **Sonner:** style theo `background` / `foreground` / `border` / `primary` (cần theme — xem phần 8).
 
-### 5.6 Chart
-
-- Container chuẩn hóa màu lưới, tick, tooltip theo design tokens (`muted-foreground`, `border`).
-- Chart có thể khai báo `theme: { light: "...", dark: "..." }` per-series.
-
 ---
 
 ## 6. Pattern theo loại trang
@@ -184,7 +178,7 @@ Dùng cho: thẻ benefit, pricing, FAQ wrapper, ảnh hero, CTA cuối trang, ca
 
 - Root `.trading-root`: zoom 1.35, nền riêng, tabular nums.
 - Header giống kiểu landing nhưng compact hơn (`py-2.5`), logo **FinMom** + class `.finmom-logo-text` (gradient text) nếu dùng; thường gọi `BrandLogoLink` / `FinMomWordmark`.
-- Nav: `NavLink` với trạng thái active (border/primary).
+- Nav: liên kết của React Router với trạng thái active (border/primary).
 - Layout dày: card nhiều tầng, bảng, donut chart PnL, màu emerald/red cho PnL và side badge.
 - **Scrollbar** tùy chỉnh qua `.trading-scroll` nơi cần.
 
@@ -217,7 +211,7 @@ Dùng cho: thẻ benefit, pricing, FAQ wrapper, ảnh hero, CTA cuối trang, ca
 
 - **`tailwind.config.ts`:** `darkMode: ["class"]` — chuẩn bị cho `.dark` trên ancestor.
 - **`sonner.tsx`** gọi `useTheme()` từ `next-themes` nhưng **không có `ThemeProvider` trong `main.tsx` / `App.tsx`**. Kết quả: theme Sonner fallback **`"system"`**; nên bổ sung provider hoặc bỏ phụ thuộc nếu không dùng đổi theme.
-- **`App.css`:** vẫn chứa style mặc định Vite (#root max-width 1280px, .logo spin). **`main.tsx` chỉ import `index.css`** — file này có thể là di sản, nhưng nếu import nhầm có thể xung đột layout marketing full-width.
+- Styling toàn cục tập trung trong `src/index.css`; tránh thêm stylesheet starter riêng để không làm xung đột layout full-width.
 
 ---
 
