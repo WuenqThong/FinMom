@@ -1,13 +1,15 @@
 import { useLayoutEffect, useMemo } from "react";
-import { Link, NavLink, useNavigate, useSearchParams } from "react-router-dom";
-import { TrendingUp, Bot, BookOpen, User, Circle, Zap } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AppShellHeader, WorkspaceBotStatusPill } from "@/components/layout/AppShellHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StrategyAnalysisDisplay } from "@/components/trading/StrategyAnalysisDisplay";
 import { readLastRagSession } from "@/lib/ragApi";
 import { readRuleEngineUiSession } from "@/lib/ruleEngineUiSession";
+import { clearAuthSession } from "@/lib/authSession";
 
 const VALID_TABS = ["overview", "rules"] as const;
 type ProfileTab = (typeof VALID_TABS)[number];
@@ -46,65 +48,24 @@ export default function ProfilePage() {
 
   return (
     <div className="trading-root flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/85 backdrop-blur-xl">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-2.5">
-          <Link to="/" className="flex shrink-0 items-center gap-2.5 justify-self-start">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-primary/30 bg-primary/15">
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </div>
-            <span className="finwise-logo-text text-base font-bold tracking-tight">FinWise</span>
-          </Link>
-
-          <nav className="flex justify-center">
-            <div className="flex items-center gap-0 rounded-full border border-primary/25 bg-primary/15 p-0.5">
-              <NavLink
-                to="/rule-engine-and-analysis"
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isActive ? "bg-background/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`
-                }
-              >
-                <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                Rule Engine &amp; Analysis
-              </NavLink>
-              <NavLink
-                to="/trading"
-                end
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isActive ? "bg-background/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`
-                }
-              >
-                <Bot className="h-3.5 w-3.5 shrink-0" />
-                Trading
-              </NavLink>
-              <NavLink
-                to="/profile"
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    isActive ? "bg-background/80 text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`
-                }
-              >
-                <User className="h-3.5 w-3.5 shrink-0" />
-                Profile
-              </NavLink>
-            </div>
-          </nav>
-
-          <div className="flex items-center justify-end gap-2 justify-self-end">
-            <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 sm:flex">
-              <Circle className="h-1.5 w-1.5 animate-pulse fill-emerald-400 text-emerald-400" />
-              <span className="text-[11px] font-semibold text-emerald-400">Bot Online</span>
-            </div>
-            <Button variant="outline" size="sm" className="h-7 rounded-full border-border/50 px-3 text-xs" onClick={() => navigate("/login")}>
+      <AppShellHeader
+        trailing={
+          <>
+            <WorkspaceBotStatusPill />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-full border-border/50 px-3 text-xs"
+              onClick={() => {
+                clearAuthSession();
+                navigate("/login");
+              }}
+            >
               Đăng xuất
             </Button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-4 pb-8">
         <h1 className="mb-4 text-lg font-bold tracking-tight text-foreground">Profile</h1>

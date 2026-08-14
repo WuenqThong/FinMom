@@ -1,10 +1,24 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Check, ChevronRight, Shield, Wallet, Zap, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Check, ChevronRight, Shield, Wallet, Zap } from "lucide-react";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { NavLink } from "@/components/NavLink";
+
+import { MainHeader } from "@/components/layout/MainHeader";
+import { LandingFooter } from "@/components/layout/LandingFooter";
+import { LandingFaqSection } from "@/components/landing/LandingFaqSection";
+import { LandingFeatureBands } from "@/components/landing/LandingFeatureBands";
+import { LandingFinalCta } from "@/components/landing/LandingFinalCta";
+import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingHowItWorks } from "@/components/landing/LandingHowItWorks";
+import { LandingLogoStrip } from "@/components/landing/LandingLogoStrip";
+import { LandingMarketsSection } from "@/components/landing/LandingMarketsSection";
+import { LandingPricingTeaser } from "@/components/landing/LandingPricingTeaser";
+import { LandingTestimonial } from "@/components/landing/LandingTestimonial";
+import { LandingTrustStrip } from "@/components/landing/LandingTrustStrip";
+import { LandingUseCaseTags } from "@/components/landing/LandingUseCaseTags";
+import { LANDING_STEPS } from "@/components/landing/landingContent";
 
 import dashboardImage from "@/assets/dashboard.png";
 import stepAccount from "@/assets/step-account.png";
@@ -13,11 +27,6 @@ import stepTrade from "@/assets/step-trade.png";
 import avatarAlex from "@/assets/avatar-alex.png";
 
 type SectionId = "hero" | "trading" | "how" | "testimonials" | "pricing" | "faq" | "rule-engine-and-analysis";
-
-const navItems: Array<{ label: string; path: string; section: SectionId }> = [
-  { label: "Rule Engine & Analysis", path: "/rule-engine-and-analysis", section: "rule-engine-and-analysis" },
-  { label: "Trading", path: "/trading", section: "trading" },
-];
 
 const benefits = [
   {
@@ -37,51 +46,8 @@ const benefits = [
   },
   {
     title: "Premium Interface",
-    desc: "An intuitive design that’s easy to use, even for beginners.",
+    desc: "An intuitive design that's easy to use, even for beginners.",
     icon: Check,
-  },
-];
-
-const plans = [
-  {
-    name: "Free",
-    price: "€0",
-    note: "/month",
-    desc: "Perfect for beginners exploring crypto trading",
-    features: [
-      "Trade 50+ cryptocurrencies",
-      "Standard trading fees (0.8%)",
-      "Basic wallet security",
-      "Mobile & desktop access",
-      "Email support",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "€49",
-    note: "/month",
-    desc: "Advanced tools for serious traders",
-    featured: true,
-    features: [
-      "Everything in Free, plus:",
-      "Reduced fees (0.4% per trade)",
-      "Priority transaction processing",
-      "Advanced charting & indicators",
-      "Portfolio analytics dashboard",
-    ],
-  },
-  {
-    name: "Business",
-    price: "€129",
-    note: "/month",
-    desc: "Built for institutions and high-volume traders",
-    features: [
-      "Everything in Pro, plus:",
-      "Ultra-low fees (0.1% per trade)",
-      "Dedicated account manager",
-      "OTC desk for large orders",
-      "24/7 phone support",
-    ],
   },
 ];
 
@@ -96,6 +62,9 @@ const faqs = [
   "How can I contact support?",
 ];
 
+const FAQ_DEFAULT_ANSWER =
+  "FinMom offers secure infrastructure, optimized fees, and a premium trading experience designed for both beginners and advanced users.";
+
 const symbols = [
   { name: "Bitcoin", price: "$71715.715", change: "+1.71%" },
   { name: "Solana", price: "$82.555", change: "-0.65%" },
@@ -104,105 +73,64 @@ const symbols = [
   { name: "Ethereum", price: "$3875.32", change: "+1.21%" },
 ];
 
+const legacySteps = [
+  {
+    title: "Create your account",
+    desc: "Sign up easily and secure your profile in just a few steps.",
+    image: stepAccount,
+  },
+  {
+    title: "Fund your wallet",
+    desc: "Deposit your Trading or make a transfer to start trading.",
+    image: stepWallet,
+  },
+  {
+    title: "Buy, sell, or convert",
+    desc: "Enjoy the simplicity of a platform that makes every transaction seamless in real-time.",
+    image: stepTrade,
+  },
+];
+
 interface FinMomPageProps {
   focus?: SectionId;
 }
 
 export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
-  const navigate = useNavigate();
   const visibleSections =
     focus === "hero"
       ? new Set<SectionId>(["hero", "trading", "how", "testimonials", "pricing", "faq"])
       : new Set<SectionId>([focus]);
 
-  return (
-    <div className="min-h-screen bg-background font-manrope text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-3 px-5 py-4 sm:px-8">
-          <Link to="/" className="flex items-center gap-2 justify-self-start text-lg font-semibold story-link">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/15">
-              <TrendingUp className="h-5 w-5 text-primary" />
-            </span>
-            <span className="font-bold tracking-tight">FinWise</span>
-          </Link>
-
-          <nav className="flex justify-center">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className="rounded-full border border-border/60 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                activeClassName="border-primary/25 bg-primary/10 text-foreground"
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="flex justify-end">
-            <Button className="rounded-full px-6" onClick={() => navigate("/login")}>
-              Login
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {visibleSections.has("hero") && (
+  if (focus === "hero") {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <MainHeader />
         <main>
-          <section className="relative overflow-hidden px-5 pb-16 pt-20 sm:px-8 md:pb-24 md:pt-28">
-            <div className="hero-glow pointer-events-none absolute inset-0" aria-hidden="true" />
-            <div className="mx-auto flex max-w-6xl flex-col items-center text-center">
-              <h1 className="max-w-3xl text-balance text-5xl font-medium leading-[1.05] tracking-tight md:text-7xl">
-                Take Control of Your Digital Assets
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg text-muted-foreground md:text-2xl">
-                FinMom offers a secure experience for managing your digital assets. Instant transactions, optimized
-                fees, and premium design.
-              </p>
-              <Button className="mt-8 rounded-full px-8 py-6 text-base font-semibold">Get started now</Button>
-
-              <div className="mt-20 space-y-2 text-sm text-muted-foreground">
-                <p>Đánh giá từ người dùng</p>
-                <p className="text-foreground">★★★★★ 4,9 </p>
-              </div>
-
-              <div className="mt-12 h-[2px] w-full max-w-5xl hero-line" aria-hidden="true" />
-
-              <img
-                src={dashboardImage}
-                alt="FinMom dashboard preview"
-                className="glass-panel mt-0 w-full max-w-5xl rounded-3xl object-cover"
-                loading="eager"
-              />
-            </div>
-          </section>
+          <LandingHero dashboardSrc={dashboardImage} />
+          <LandingLogoStrip />
+          <LandingFeatureBands />
+          <LandingMarketsSection symbols={symbols} />
+          <LandingHowItWorks steps={LANDING_STEPS} />
+          <LandingTrustStrip />
+          <LandingUseCaseTags />
+          <LandingTestimonial
+            avatarSrc={avatarAlex}
+            name="Alex M."
+            role="Blockchain Analyst at NovaChain"
+            quote="FinMom makes crypto trading effortless. Fast transactions, low fees, and a sleek interface—exactly what I needed."
+          />
+          <LandingPricingTeaser />
+          <LandingFaqSection faqs={faqs} answer={FAQ_DEFAULT_ANSWER} />
         </main>
-      )}
+        <LandingFinalCta />
+        <LandingFooter />
+      </div>
+    );
+  }
 
-      {visibleSections.has("hero") && (
-        <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8" aria-labelledby="benefits-title">
-          <h2 id="benefits-title" className="text-3xl font-semibold md:text-5xl">
-            Why Choose FinMom?
-          </h2>
-          <p className="mt-5 max-w-3xl text-muted-foreground">
-            Benefits designed to provide a seamless, secure, and accessible experience for all users.
-          </p>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            {benefits.map((item) => (
-              <Card key={item.title} className="glass-panel">
-                <CardContent className="flex items-start gap-4 p-6">
-                  <item.icon className="mt-1 h-5 w-5 text-primary" />
-                  <div>
-                    <h3 className="text-lg font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <MainHeader />
 
       {visibleSections.has("trading") && (
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8" aria-labelledby="Trading-title">
@@ -238,23 +166,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
           </p>
 
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {[
-              {
-                title: "Create your account",
-                desc: "Sign up easily and secure your profile in just a few steps.",
-                image: stepAccount,
-              },
-              {
-                title: "Fund your wallet",
-                desc: "Deposit your Trading or make a transfer to start trading.",
-                image: stepWallet,
-              },
-              {
-                title: "Buy, sell, or convert",
-                desc: "Enjoy the simplicity of a platform that makes every transaction seamless in real-time.",
-                image: stepTrade,
-              },
-            ].map((step) => (
+            {legacySteps.map((step) => (
               <Card key={step.title} className="glass-panel overflow-hidden">
                 <img src={step.image} alt={step.title} className="h-56 w-full object-cover" loading="lazy" />
                 <CardContent className="space-y-2 p-6">
@@ -273,8 +185,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
             Trusted by Crypto Enthusiasts Worldwide
           </h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
-            Join a growing community of investors who choose FinMom for its seamless experience, security, and
-            premium design.
+            Join a growing community of investors who choose FinMom for its seamless experience, security, and premium design.
           </p>
 
           <Card className="glass-panel mt-10 max-w-3xl">
@@ -287,8 +198,8 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
                 </div>
               </div>
               <p className="mt-6 text-lg">
-                FinMom makes crypto trading effortless. Fast transactions, low fees, and a sleek interface—exactly
-                what I needed.”
+                FinMom makes crypto trading effortless. Fast transactions, low fees, and a sleek interface—exactly what I
+                needed.
               </p>
             </CardContent>
           </Card>
@@ -297,42 +208,22 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
 
       {visibleSections.has("pricing") && (
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8" aria-labelledby="pricing-title">
-          <h2 id="pricing-title" className="text-3xl font-semibold md:text-5xl">
-            Choose Your Plan. Start Trading Today.
-          </h2>
-          <p className="mt-5 max-w-3xl text-muted-foreground">
-            Transparent pricing for every investor. Scale as you grow with no hidden fees or surprise charges.
-          </p>
-
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {plans.map((plan) => (
-              <Card
-                key={plan.name}
-                className={plan.featured ? "glass-panel border-primary" : "glass-panel border-border/80"}
-              >
-                <CardContent className="space-y-5 p-6">
-                  <div>
-                    <h3 className="text-2xl font-semibold">{plan.name}</h3>
-                    <p className="mt-3 text-4xl font-bold">
-                      {plan.price} <span className="text-sm font-medium text-muted-foreground">{plan.note}</span>
-                    </p>
-                    <p className="mt-3 text-muted-foreground">{plan.desc}</p>
-                  </div>
-
-                  <Button className="w-full rounded-full">Get started</Button>
-
-                  <ul className="space-y-3 text-sm text-muted-foreground">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-4 w-4 text-primary" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card className="glass-panel border-primary/20">
+            <CardContent className="flex flex-col items-center gap-6 p-8 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+              <div className="min-w-0">
+                <h2 id="pricing-title" className="text-2xl font-semibold tracking-tight md:text-3xl">
+                  Pricing for traders, automation, and creators
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+                  Compare Free, Pro, Trader Plus, and Creator — plus marketplace fees and Business / Team — on the full
+                  pricing page.
+                </p>
+              </div>
+              <Button asChild className="shrink-0 rounded-full px-8">
+                <Link to="/pricing">View full pricing</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </section>
       )}
 
@@ -351,10 +242,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
                 {faqs.map((item, index) => (
                   <AccordionItem key={item} value={`faq-${index}`}>
                     <AccordionTrigger>{item}</AccordionTrigger>
-                    <AccordionContent>
-                      FinMom offers secure infrastructure, optimized fees, and a premium trading experience designed
-                      for both beginners and advanced users.
-                    </AccordionContent>
+                    <AccordionContent>{FAQ_DEFAULT_ANSWER}</AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
@@ -363,7 +251,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
         </section>
       )}
 
-      {visibleSections.size === 1 && focus !== "hero" && (
+      {visibleSections.size === 1 && (
         <section className="mx-auto max-w-6xl px-5 pb-20 sm:px-8">
           <h2 className="text-3xl font-semibold md:text-5xl">Why Choose FinMom?</h2>
           <p className="mt-5 max-w-3xl text-muted-foreground">
@@ -391,8 +279,7 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
           <CardContent className="space-y-6 px-6 py-12 sm:px-10">
             <h2 className="text-balance text-3xl font-semibold md:text-5xl">Ready to take control of your crypto?</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Join thousands of users who trust FinMom for secure, seamless, and efficient cryptocurrency
-              transactions.
+              Join thousands of users who trust FinMom for secure, seamless, and efficient cryptocurrency transactions.
             </p>
             <Button className="rounded-full px-8 py-6 text-base">
               Get started now <ChevronRight className="h-4 w-4" />
@@ -400,6 +287,8 @@ export default function FinMomPage({ focus = "hero" }: FinMomPageProps) {
           </CardContent>
         </Card>
       </section>
+
+      <LandingFooter />
     </div>
   );
 }

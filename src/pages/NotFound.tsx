@@ -1,5 +1,6 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { LandingFooter } from "@/components/layout/LandingFooter";
 
 const NotFound = () => {
   const location = useLocation();
@@ -9,14 +10,15 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
-      <div className="text-center">
+    <div className="flex min-h-screen flex-col bg-muted">
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
         <h1 className="mb-4 text-4xl font-bold">404</h1>
         <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
+        <Link to="/" className="text-primary underline hover:text-primary/90">
           Return to Home
-        </a>
+        </Link>
       </div>
+      <LandingFooter />
     </div>
   );
 };

@@ -1,14 +1,17 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, TrendingUp } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeRedirectPath, setAuthSession } from "@/lib/authSession";
+import { LandingFooter } from "@/components/layout/LandingFooter";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,17 +31,19 @@ export default function LoginPage() {
     // Simulate login
     await new Promise((r) => setTimeout(r, 1200));
     setIsLoading(false);
-    toast({ title: "Đăng nhập thành công!", description: "Chào mừng bạn trở lại FinWise." });
-    navigate("/");
+    setAuthSession();
+    toast({ title: "Đăng nhập thành công!", description: "Chào mừng bạn trở lại FinMom." });
+    const next = sanitizeRedirectPath(searchParams.get("redirect")) ?? "/";
+    navigate(next, { replace: true });
   };
 
   return (
-    <div className="auth-page-bg min-h-screen flex items-center justify-center px-4 py-12">
-      {/* Background decorations */}
+    <div className="auth-page-bg flex min-h-screen flex-col">
       <div className="auth-glow-1" />
       <div className="auth-glow-2" />
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
         <Card className="glass-panel auth-card">
           <CardContent className="p-8">
             <div className="mb-7 text-center">
@@ -123,11 +128,10 @@ export default function LoginPage() {
             </p>
           </CardContent>
         </Card>
-
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2025 FinWise
-        </p>
+        </div>
       </div>
+
+      <LandingFooter className="relative z-10 mt-auto" />
     </div>
   );
 }
