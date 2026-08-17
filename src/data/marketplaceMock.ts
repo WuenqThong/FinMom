@@ -7,14 +7,13 @@ export type MarketplaceCategoryId =
   | "bonds"
   | "etfs"
   | "research"
-  | "bots"
-  | "bundles";
+  | "bots";
 
 export type AssetClass = "crypto" | "stocks" | "bonds" | "etfs" | "commodities" | "multi";
 
 export type RiskLevel = "low" | "medium" | "high";
 
-export type PriceKind = "free" | "paid" | "subscription" | "bundle";
+export type PriceKind = "free" | "paid" | "subscription";
 
 export interface MarketplaceProduct {
   id: string;
@@ -36,15 +35,6 @@ export interface MarketplaceProduct {
   performanceHint?: string;
 }
 
-export interface BundlePack {
-  id: string;
-  title: string;
-  description: string;
-  priceDisplay: string;
-  itemCount: number;
-  tags: string[];
-}
-
 export interface HowItWorksStep {
   step: number;
   title: string;
@@ -61,7 +51,6 @@ export const marketplaceCategoryLabels: Record<MarketplaceCategoryId, string> = 
   etfs: "ETFs",
   research: "Research",
   bots: "Bots",
-  bundles: "Bundles",
 };
 
 export const categoryStripIds: MarketplaceCategoryId[] = [
@@ -343,41 +332,6 @@ export const featuredProducts: MarketplaceProduct[] = [
     creatorVerified: true,
     risk: "low",
     tags: ["Automation", "Ops"],
-  },
-];
-
-export const bundlePacks: BundlePack[] = [
-  {
-    id: "bd-1",
-    title: "Crypto Starter Pack",
-    description: "Spot risk rules, grid presets, and a cross-venue backtest shell.",
-    priceDisplay: "$79",
-    itemCount: 6,
-    tags: ["Crypto", "Starter"],
-  },
-  {
-    id: "bd-2",
-    title: "Risk Management Pack",
-    description: "VaR-style guardrails, position caps, and futures liquidation sentinels.",
-    priceDisplay: "$99",
-    itemCount: 8,
-    tags: ["Risk", "Pro"],
-  },
-  {
-    id: "bd-3",
-    title: "Bond Income Pack",
-    description: "Duration ladders, IG watchlists, and carry dashboards.",
-    priceDisplay: "$64",
-    itemCount: 5,
-    tags: ["Bonds", "Income"],
-  },
-  {
-    id: "bd-4",
-    title: "AI Trading Rules Pack",
-    description: "LLM-to-rule drafting templates with human review checkpoints.",
-    priceDisplay: "$119",
-    itemCount: 7,
-    tags: ["AI", "Rules"],
   },
 ];
 
